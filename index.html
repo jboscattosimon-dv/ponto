@@ -61,11 +61,11 @@ input,select{font:inherit;color:inherit}
 .lbl{font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
 
 /* saldo */
-.hero{position:relative;padding:4px 4px 6px}
+.hero{position:relative;padding:4px 4px 14px}
 .hero::before{display:none;content:"";position:absolute;inset:0;background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:22px 22px;mask-image:linear-gradient(180deg,#000,transparent 85%);-webkit-mask-image:linear-gradient(180deg,#000,transparent 85%);pointer-events:none}
 .hero::after{display:none;content:"";position:absolute;width:260px;height:260px;right:-90px;top:-120px;border-radius:50%;background:radial-gradient(circle,var(--glow,color-mix(in srgb,var(--accent) 35%,transparent)),transparent 68%);pointer-events:none;transition:background .6s}
 .hero > *{position:relative;z-index:1}
-.bal{display:flex;align-items:baseline;gap:2px;font-family:var(--m);font-weight:500;font-size:clamp(60px,19vw,84px);line-height:.95;letter-spacing:-.07em;margin:8px 0 20px;font-variant-numeric:tabular-nums}
+.bal{display:flex;align-items:baseline;gap:2px;font-family:var(--m);font-weight:500;font-size:clamp(60px,19vw,84px);line-height:.95;letter-spacing:-.07em;margin:6px 0 18px;font-variant-numeric:tabular-nums}
 .bal .u{font-size:.45em;color:var(--muted);letter-spacing:0;margin:0 3px}
 
 .pills{display:flex;flex-wrap:wrap;gap:6px}
@@ -84,6 +84,17 @@ input,select{font:inherit;color:inherit}
 .gday .ex{font-family:var(--m);font-weight:500;font-size:20px;letter-spacing:-.03em;min-width:62px;text-align:right}
 .gday.today .dn{font-weight:600}
 .gday .ex small{display:block;font-family:var(--f);font-size:10.5px;font-weight:500;color:var(--muted);letter-spacing:0}
+.lead{font-size:17px;line-height:1.4;color:var(--muted);margin:-6px 0 18px;max-width:30ch}
+.lead b{color:var(--ink);font-weight:600}
+.seg.mini{display:inline-flex;background:transparent;padding:0;gap:6px}
+.seg.mini button{flex:none;padding:7px 14px;border-radius:999px;font-size:13px;box-shadow:inset 0 0 0 1px var(--line)}
+.seg.mini button[aria-pressed="true"]{box-shadow:none}
+.exit{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:14px}
+.exit b{font-family:var(--m);font-weight:500;font-size:44px;letter-spacing:-.06em;line-height:1}
+.pcap{display:flex;justify-content:space-between;font-size:13px;color:var(--muted);margin:8px 0 22px;font-family:var(--m)}
+.pcap span:first-child{color:var(--ink)}
+.next{font-size:13.5px;color:var(--muted);text-align:center;padding:4px 12px}
+.next b{color:var(--ink);font-weight:600;font-family:var(--m)}
 .kpis{display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
 .kpis div{padding:12px 0 12px 12px;min-width:0}
 .kpis div:first-child{padding-left:0}
@@ -118,7 +129,7 @@ input,select{font:inherit;color:inherit}
 .punch .t{font-family:var(--m);font-weight:500;font-size:26px;letter-spacing:-.04em}
 .punch.done{background:var(--surface-2);color:var(--ink)}
 .punch.warn{background:var(--muted);color:var(--bg)}
-.tl{display:grid;gap:4px;position:relative;margin:2px 0 4px}
+.tl{display:grid;gap:4px;position:relative;margin:0}
 .tl::before{content:"";position:absolute;left:calc(100%/var(--n)/2);right:calc(100%/var(--n)/2);top:7px;height:2px;background:var(--line)}
 .tl .fill{position:absolute;left:calc(100%/var(--n)/2);top:7px;height:2px;background:var(--ink);transition:width .6s}
 .node{display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center;padding:0 2px 6px;border-radius:12px;position:relative;min-width:0}
@@ -289,43 +300,28 @@ select.inp{background-image:none;text-align-last:center;font-family:var(--f);fon
   <!-- HOJE -->
   <section class="tab" data-tab="hoje">
     <div class="hero" id="hero">
-      <div class="lbl">Saldo do banco</div>
+      <div class="lbl">Saldo</div>
       <div class="bal" id="balance">0<span class="u">h</span>00</div>
-      <div class="kpis" id="kpis"></div>
-      <svg class="spark" id="spark" viewBox="0 0 300 58" preserveAspectRatio="none" aria-hidden="true"></svg>
-      <div class="sparkl" id="sparkl"></div>
-    </div>
-
-    <div class="card goal" id="goal">
-      <div class="ch"><h2 id="goal-title">Até o fim do mês</h2><span class="lbl" id="goal-n">—</span></div>
-      <div class="seg" id="goal-seg">
+      <p class="lead" id="goal-why"></p>
+      <div class="seg mini" id="goal-seg">
         <button data-g="0">Zerar</button><button data-g="60">+1h</button><button data-g="120">+2h</button><button data-g="240">+4h</button>
       </div>
-      <div class="big"><b id="goal-h">—</b><span id="goal-u">por dia</span></div>
-      <div class="why" id="goal-why"></div>
-      <div class="gdays" id="goal-days"></div>
-      <div class="notes" id="goal-notes"></div>
     </div>
 
     <div class="card">
-      <div class="ch"><h2>Ponto de hoje</h2><span class="lbl" id="day-kind">—</span></div>
-      <div id="sat-choice" hidden style="margin-bottom:16px">
+      <div id="sat-choice" hidden style="margin-bottom:18px">
         <div class="seg"><button id="sat-work" aria-pressed="true">Vou trabalhar</button><button id="sat-off" aria-pressed="false">Folgar (−4h)</button></div>
       </div>
-      <div class="prog">
-        <div class="prog-h"><div><b class="mono" id="w-now">0h00</b><span id="w-of">de 8h00</span></div><div class="r"><span id="w-lbl">saída do plano</span><b class="mono" id="w-exit">—</b></div></div>
-        <div class="pbar"><i id="prg"></i></div>
-      </div>
+      <div class="exit"><span class="lbl" id="w-lbl">Saia às</span><b id="w-exit">—</b></div>
+      <div class="pbar"><i id="prg"></i></div>
+      <div class="pcap"><span id="w-now">0h00</span><span id="w-of"></span></div>
       <div class="tl" id="tl"></div>
       <button class="punch" id="punch"><span class="pl"><span class="k" id="punch-k">Bater</span><span class="a" id="punch-a">Entrada</span></span><span class="t" id="punch-t">--:--</span></button>
-      <div class="fore" id="fore"></div>
       <div class="notes" id="notes"></div>
     </div>
+    <p class="next" id="goal-next"></p>
 
-    <div class="card">
-      <div class="ch"><h2>Próximos avisos</h2><button class="btn sm" id="enable-alerts">Ativar som</button></div>
-      <div id="rem"></div>
-    </div>
+    <div hidden><span id="kpis"></span><svg id="spark"></svg><span id="sparkl"></span><span id="goal-title"></span><span id="goal-n"></span><span id="goal-h"></span><span id="goal-u"></span><span id="goal-days"></span><span id="goal-notes"></span><span id="day-kind"></span><span id="fore"></span><span id="rem"></span></div>
   </section>
 
   <!-- SEMANA -->
@@ -394,7 +390,7 @@ select.inp{background-image:none;text-align-last:center;font-family:var(--f);fon
       <div class="fr"><label for="s-satx">Saída no sábado</label><input class="inp" type="time" id="s-satx"></div>
       <div class="fr"><div class="lb"><label for="s-paysat">Pagar horas no sábado</label><small>Se não, a dívida é dividida só de seg a sex até o fim do mês</small></div><select class="inp w" id="s-paysat"><option value="0">Não</option><option value="1">Sim</option></select></div>
       <div class="fr"><label for="s-rem">Avisar antes (min)</label><input class="inp" type="number" min="0" max="60" inputmode="numeric" id="s-rem"></div>
-      <div class="btns"><button class="btn ink full" id="export-ics">Colocar lembretes na agenda</button></div>
+      <div class="btns"><button class="btn ink full" id="export-ics">Colocar lembretes na agenda</button><button class="btn full" id="enable-alerts">Ativar som dos avisos</button></div>
     </div>
 
     <div class="sec">Regras da empresa</div>
@@ -639,7 +635,7 @@ $("#enable-alerts").addEventListener("click", async () => {
   let perm = "default";
   try { if ("Notification" in window) perm = await Notification.requestPermission(); } catch (e) {}
   beep();
-  $("#enable-alerts").textContent = perm === "granted" ? "Ligado ✓" : "Som ligado ✓";
+  $("#enable-alerts").textContent = perm === "granted" ? "Avisos ligados ✓" : "Som ligado ✓";
   toast(perm === "granted" ? "Avisos com som e notificação" : "Som ligado. Com a tela bloqueada, use os lembretes na agenda");
 });
 
@@ -853,7 +849,7 @@ function renderToday() {
   else if (idx == null) { $("#punch-k").textContent = "Dia fechado"; $("#punch-a").textContent = sdur(c.diff); btn.classList.add("done"); }
   else { $("#punch-k").textContent = "Bater ponto"; $("#punch-a").textContent = LONG[kind][idx]; }
   const ratio = c.expected ? Math.min(1, c.worked / c.expected) : (c.worked ? 1 : 0);
-  $("#prg").style.width = (ratio * 100).toFixed(1) + "%";
+
 
   // linha do tempo
   const doneN = p.filter(Boolean).length;
@@ -863,15 +859,17 @@ function renderToday() {
     let hint = "";
     if (!t && kind === "wd") hint = i === 0 ? `após ${st.earliest}` : i === 1 ? `após ${st.lunchOutMin}` : i === 2 ? (p[1] ? `após ${hhmm(toMin(p[1]) + st.lunchMin)}` : "mín. 1h") : `após ${st.exitMin}`;
     if (!t && kind === "sat") hint = i === 0 ? `às ${st.satStart}` : `após ${st.satExitMin}`;
-    return `<button class="node${t ? " ok" : ""}${isNext ? " next" : ""}" data-edit="${k}"><span class="dot"></span><span class="tm${t ? "" : " e"}${stampIdx === i ? " stamp" : ""}">${t || "--:--"}</span><span class="nm">${l}</span><span class="hn">${hint || "&nbsp;"}</span></button>`;
+    return `<button class="node${t ? " ok" : ""}${isNext ? " next" : ""}" data-edit="${k}"><span class="dot"></span><span class="tm${t ? "" : " e"}${stampIdx === i ? " stamp" : ""}">${t || "--:--"}</span><span class="nm">${l}</span></button>`;
   }).join("");
   stampIdx = null;
 
   const f = forecast();
-  $("#w-now").textContent = dur(c.worked);
-  $("#w-of").textContent = c.expected ? (c.worked >= c.expected ? `${sdur(c.worked - c.expected)} extra` : `de ${dur(c.expected)}`) : "";
-  $("#w-lbl").textContent = c.atLunch ? "volta liberada" : c.complete ? "saldo do dia" : "saída do plano";
-  $("#w-exit").textContent = c.atLunch && f && f.backAt != null ? hhmm(f.backAt) : c.complete ? sdur(c.diff) : f ? hhmm(Math.min(f.ideal, 1439)) : "—";
+  const td = goalPlan(+st.goal || 0).days.find(x => x.k === k), plan = td ? td.hours : c.expected;
+  $("#prg").style.width = (plan ? Math.min(100, c.worked / plan * 100) : 0).toFixed(1) + "%";
+  $("#w-now").textContent = `${dur(c.worked)} feitas`;
+  $("#w-of").textContent = plan ? `meta ${dur(plan)}` : "";
+  $("#w-lbl").textContent = c.atLunch && f && f.backAt != null ? "Volte do almoço às" : c.complete ? "Dia fechado" : r && r.k === "work" && p[0] ? "Saia às" : r && r.k !== "work" ? "Hoje" : td ? "Entre às" : "Hoje";
+  $("#w-exit").textContent = c.atLunch && f && f.backAt != null ? hhmm(f.backAt) : c.complete ? sdur(c.diff) : f ? hhmm(Math.min(f.ideal, 1439)) : r && r.k !== "work" ? (r.k === "off" ? "Folga" : "Feriado") : td ? hhmm(td.start) : "—";
 
   let fh = "";
   if (f && !c.complete) {
@@ -888,28 +886,17 @@ function renderToday() {
 function renderGoal() {
   const st = S.settings, target = +st.goal || 0, g = goalPlan(target), t = todayKey();
   $$("#goal-seg button").forEach(b => b.setAttribute("aria-pressed", String(+b.dataset.g === target)));
-  const last = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0);
-  $("#goal-title").textContent = target ? `Fechar o mês com ${sdur(target)}` : "Zerar até o fim do mês";
-  $("#goal-n").textContent = `${g.days.length} dia${g.days.length === 1 ? "" : "s"} · até ${last.getDate()} ${MON[last.getMonth()]}`;
-  if (!g.days.length) {
-    $("#goal-h").textContent = sdur(g.bank); $("#goal-u").textContent = "fecha o mês";
-    $("#goal-why").innerHTML = "Não há mais dias úteis neste mês."; $("#goal-days").innerHTML = ""; $("#goal-notes").innerHTML = ""; return;
-  }
-  const wdays = g.days.filter(d => d.kind === "wd"), ref = wdays[0] || g.days[0];
-  const same = g.days.every(d => d.extra === g.days[0].extra && d.exp === g.days[0].exp);
-  $("#goal-h").textContent = dur(ref.hours); $("#goal-u").textContent = same ? "por dia" : "hoje";
-  const fmt = d => { const x = parseKey(d.k); return `${DOW[x.getDay()]} ${x.getDate()}`; };
+  const fmt = k => { const x = parseKey(k); return `${DOWL[x.getDay()]} ${x.getDate()}`; };
+  const meta = target ? `ficar com <b>${sdur(target)}</b>` : "zerar";
+  if (!g.days.length) { $("#goal-why").innerHTML = "Sem dias úteis restantes neste mês."; $("#goal-next").innerHTML = ""; return; }
+  const ref = g.days.find(d => d.kind === "wd") || g.days[0], lastDay = g.days.at(-1).k;
+  const same = g.days.every(d => d.hours === ref.hours);
   $("#goal-why").innerHTML = g.need > 0
-    ? `Saldo <b>${sdur(g.bank)}</b>. Faça <b>${dur(ref.exp)} + ${dur(ref.extra)}</b> extra${same ? " em cada dia" : ""} para ${target ? `fechar com <b>${sdur(target)}</b>` : "<b>zerar</b>"}.`
-    : `Saldo <b>${sdur(g.bank)}</b>: você já ${target ? "passou da meta" : "está no positivo"}. Pode fazer até <b>${dur(-Math.min(0, g.days[0].extra))}</b> a menos por dia.`;
-  $("#goal-days").innerHTML = g.days.map(d => {
-    const today = d.k === t;
-    return `<div class="gday${today ? " today" : ""}"><div class="dn">${today ? "Hoje" : fmt(d)}<small>${d.fixed ? `entrou ${hhmm(d.start)}` : `entrar ${hhmm(d.start)}`}${d.lun ? ` · almoço ${dur(d.lun)}` : ""}</small></div><div class="hr">${dur(d.hours)}</div><div class="ex">${hhmm(d.exit)}<small>sair</small></div></div>`;
-  }).join("");
-  const notes = [];
-  if (g.short > 0) notes.push(`Saindo no máximo às ${st.latest || DEFAULTS.latest}, faltam ${dur(g.short)} neste mês. ${st.paySat ? "" : "Trabalhar um sábado ajudaria."}`);
-  if (g.days.some(d => d.exit > d.base + d.extra)) notes.push(`A regra de saída mínima (${st.exitMin}) já garante um pouco a mais em alguns dias.`);
-  $("#goal-notes").innerHTML = notes.map(n => `<div class="note">${esc(n)}</div>`).join("");
+    ? `Faça <b>${dur(ref.hours)}</b> ${same ? "por dia" : "hoje"} até ${g.days.length > 1 ? fmt(lastDay) : "hoje"} para ${meta}.`
+    : `Meta batida. Pode fazer <b>${dur(ref.hours)}</b> por dia até ${fmt(lastDay)}.`;
+  if (g.short > 0) $("#goal-why").innerHTML += ` <br>Saindo até ${st.latest || DEFAULTS.latest}, ainda faltam <b>${dur(g.short)}</b>.`;
+  const nx = g.days.find(d => d.k !== t);
+  $("#goal-next").innerHTML = nx ? `${fmt(nx.k)[0].toUpperCase() + fmt(nx.k).slice(1)}: entrar <b>${hhmm(nx.start)}</b> e sair <b>${hhmm(nx.exit)}</b>` : "";
 }
 $("#goal-seg").addEventListener("click", e => { const b = e.target.closest("button"); if (!b) return; S.settings.goal = +b.dataset.g; save(); render(); });
 function renderSpark() {
