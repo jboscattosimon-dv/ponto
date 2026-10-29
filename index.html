@@ -372,6 +372,7 @@ select.inp{background-image:none;text-align-last:center;font-family:var(--f);fon
       <div class="fr"><label for="s-p3">Saída</label><input class="inp" type="time" id="s-p3"></div>
       <div class="fr"><label for="s-sat">Sábado</label><select class="inp w" id="s-sat"><option value="work">Trabalho</option><option value="off">Folga</option></select></div>
       <div class="fr"><label for="s-satx">Saída no sábado</label><input class="inp" type="time" id="s-satx"></div>
+      <div class="fr"><div class="lb"><label for="s-paysat">Pagar horas no sábado</label><small>Se não, a dívida é dividida só de seg a sex até o fim do mês</small></div><select class="inp w" id="s-paysat"><option value="0">Não</option><option value="1">Sim</option></select></div>
       <div class="fr"><label for="s-rem">Avisar antes (min)</label><input class="inp" type="number" min="0" max="60" inputmode="numeric" id="s-rem"></div>
       <div class="btns"><button class="btn ink full" id="export-ics">Colocar lembretes na agenda</button></div>
     </div>
@@ -386,6 +387,7 @@ select.inp{background-image:none;text-align-last:center;font-family:var(--f);fon
       <div class="fr"><label for="s-lo">Almoço a partir de</label><input class="inp" type="time" id="s-lo"></div>
       <div class="fr"><label for="s-lm">Almoço mínimo (min)</label><input class="inp" type="number" min="0" inputmode="numeric" id="s-lm"></div>
       <div class="fr"><label for="s-ex">Saída mais cedo</label><input class="inp" type="time" id="s-ex"></div>
+      <div class="fr"><div class="lb"><label for="s-lt">Saída mais tarde</label><small>Até quando dá para ficar na empresa</small></div><input class="inp" type="time" id="s-lt"></div>
       <div class="fr"><label for="s-ss">Sábado começa</label><input class="inp" type="time" id="s-ss"></div>
       <div class="fr"><label for="s-sx">Sábado sai a partir de</label><input class="inp" type="time" id="s-sx"></div>
       <div class="fr"><label for="s-se">Sábado termina</label><input class="inp" type="time" id="s-se"></div>
@@ -443,7 +445,7 @@ const DEFAULTS = {
   satStart: "08:00", satExitMin: "10:00", satEnd: "12:00",
   weekdayMin: 480, satMin: 240,
   plan: ["08:30", "12:00", "13:30", "18:00"], planSat: "work", planSatExit: "12:00",
-  remind: 5, theme: "auto"
+  remind: 5, theme: "auto", paySat: false, latest: "18:20"
 };
 let S = { settings: { ...DEFAULTS }, days: {} };
 
@@ -592,10 +594,10 @@ function reminders() {
     out.push({ id: "in", at: pl[0], t: "Entrada", s: p[0] != null ? hhmm(p[0]) : null, b: `Entre a partir de ${st.earliest}` });
     out.push({ id: "lo", at: pl[1], t: "Saída para o almoço", s: p[1] != null ? hhmm(p[1]) : null, b: `Almoço mínimo de ${dur(st.lunchMin)}` });
     out.push({ id: "lb", at: p[1] != null ? p[1] + st.lunchMin : pl[2], t: "Volta do almoço", s: p[2] != null ? hhmm(p[2]) : null, b: "Já pode bater a volta" });
-    out.push({ id: "out", at: f && f.exitDay != null ? Math.max(f.exitDay, toMin(st.exitMin)) : pl[3], t: "Saída", s: p[3] != null ? hhmm(p[3]) : null, b: "Dia fechado, bata a saída" });
+    out.push({ id: "out", at: f ? f.ideal : pl[3], t: "Saída ideal", s: p[3] != null ? hhmm(p[3]) : null, b: f && f.pp.share ? `Fez +${dur(f.pp.share)} para pagar o banco` : "Dia fechado, bata a saída" });
   } else {
     out.push({ id: "in", at: toMin(st.satStart), t: "Entrada de sábado", s: p[0] != null ? hhmm(p[0]) : null, b: "" });
-    out.push({ id: "out", at: f && f.exitDay != null ? f.exitDay : toMin(st.satEnd), t: "Saída de sábado", s: p[1] != null ? hhmm(p[1]) : null, b: `Saída mínima ${st.satExitMin}` });
+    out.push({ id: "out", at: f ? f.ideal : toMin(st.satEnd), t: "Saída de sábado", s: p[1] != null ? hhmm(p[1]) : null, b: `Saída mínima ${st.satExitMin}` });
   }
   return out;
 }
@@ -704,6 +706,21 @@ async function checkHash() {
 }
 
 /* ---------- previsão ---------- */
+// dias úteis que ainda faltam no mês (inclui hoje), para dividir a dívida
+function payPlan() {
+  const st = S.settings, now = new Date(), y = now.getFullYear(), m = now.getMonth(), t = todayKey();
+  const last = new Date(y, m + 1, 0).getDate(), days = [];
+  for (let d = now.getDate(); d <= last; d++) {
+    const k = keyOf(new Date(y, m, d)), kind = kindOf(k), r = S.days[k];
+    if (kind === "sun" || (kind === "sat" && !st.paySat)) continue;
+    if (r && r.k !== "work") continue;
+    if (k !== t && r && calc(k, r).complete) continue;
+    days.push(k);
+  }
+  const debt = Math.max(0, -closedBank(true));
+  const n = Math.max(1, days.length);
+  return { debt, days, share: debt ? Math.ceil(debt / n) : 0 };
+}
 function forecast() {
   const k = todayKey(), kind = kindOf(k), r = S.days[k], st = S.settings;
   if (!r || r.k !== "work") return null;
@@ -714,12 +731,13 @@ function forecast() {
     let lunch = st.lunchMin;
     if (p[1] != null && p[2] != null) lunch = Math.max(st.lunchMin, p[2] - p[1]);
     else if (p[1] != null) lunch = Math.max(st.lunchMin, now - p[1]);
-    const exitDay = e + st.weekdayMin + lunch;
-    return { exitDay, exitBank: exitDay - bank, min: toMin(st.exitMin), backAt: p[1] != null ? p[1] + st.lunchMin : null };
+    const exitDay = e + st.weekdayMin + lunch, min = toMin(st.exitMin), pp = payPlan();
+    const want = Math.max(exitDay + pp.share, min), cap = toMin(st.latest || DEFAULTS.latest);
+    return { exitDay, exitBank: exitDay - bank, min, backAt: p[1] != null ? p[1] + st.lunchMin : null, pp, ideal: Math.min(want, Math.max(cap, min)), capped: want > cap };
   }
   const s = kind === "sat" ? Math.max(p[0], toMin(st.satStart)) : p[0];
-  const exitDay = s + (kind === "sat" ? st.satMin : 0);
-  return { exitDay, exitBank: exitDay - bank, min: kind === "sat" ? toMin(st.satExitMin) : null };
+  const exitDay = s + (kind === "sat" ? st.satMin : 0), min = kind === "sat" ? toMin(st.satExitMin) : null, pp = payPlan();
+  return { exitDay, exitBank: exitDay - bank, min, pp, ideal: Math.max(exitDay + pp.share, min || 0) };
 }
 
 /* ---------- bater ponto ---------- */
@@ -806,11 +824,15 @@ function renderToday() {
   stampIdx = null;
 
   const f = forecast();
-  $("#stats").innerHTML = `<div><b>${dur(c.worked)}</b><span>trabalhado</span></div><div><b class="${c.worked >= c.expected && c.expected ? "pos-t" : ""}">${c.expected ? (c.worked >= c.expected ? sdur(c.worked - c.expected) : dur(c.expected - c.worked)) : "—"}</b><span>${c.worked >= c.expected ? "extra" : "falta"}</span></div><div><b>${c.atLunch && f && f.backAt != null ? hhmm(f.backAt) : f && !c.complete ? hhmm(f.min != null ? Math.max(f.exitDay, f.min) : f.exitDay) : "—"}</b><span>${c.atLunch ? "volta liberada" : "saída ideal"}</span></div>`;
+  $("#stats").innerHTML = `<div><b>${dur(c.worked)}</b><span>trabalhado</span></div><div><b class="${c.worked >= c.expected && c.expected ? "pos-t" : ""}">${c.expected ? (c.worked >= c.expected ? sdur(c.worked - c.expected) : dur(c.expected - c.worked)) : "—"}</b><span>${c.worked >= c.expected ? "extra" : "falta"}</span></div><div><b>${c.atLunch && f && f.backAt != null ? hhmm(f.backAt) : f && !c.complete ? hhmm(Math.min(f.ideal, 1439)) : "—"}</b><span>${c.atLunch ? "volta liberada" : "saída ideal"}</span></div>`;
 
   let fh = "";
   if (f && !c.complete) {
     const minT = f.min, okDay = minT != null ? Math.max(f.exitDay, minT) : f.exitDay, okBank = minT != null ? Math.max(f.exitBank, minT) : f.exitBank;
+    if (f.pp.share) {
+      const nd = f.pp.days.length, rest = f.pp.days.filter(x => x !== todayKey()).map(x => { const d = parseKey(x); return `${DOW[d.getDay()].toLowerCase()} ${d.getDate()}`; });
+      fh += `<div class="frow" style="background:var(--accent-soft);margin:0 -10px;padding:12px 10px;border-radius:12px;border:0"><div class="l"><b>Saída ideal</b><small>+${dur(f.pp.share)} hoje${rest.length ? ` e em ${rest.join(", ")}` : ""} zera ${dur(f.pp.debt)} até o fim do mês${f.capped ? `. Limite de saída ${st.latest || DEFAULTS.latest}: o resto fica para depois` : ""}</small></div><div class="v" style="color:var(--accent)">${hhmm(Math.min(f.ideal, 1439))}</div></div>`;
+    }
     fh += `<div class="frow"><div class="l">Fechar o dia<small>${okDay > f.exitDay ? `regra: não antes de ${hhmm(minT)}` : "sem crédito nem débito"}</small></div><div class="v">${hhmm(okDay)}</div></div>`;
     fh += `<div class="frow"><div class="l">Zerar o banco<small>${okBank > f.exitBank ? `restam ${sdur(f.exitBank - okBank)} p/ outros dias` : f.exitBank - f.exitDay > 180 ? "melhor dividir em vários dias" : `saldo antes de hoje ${sdur(bankClosed)}`}</small></div><div class="v">${hhmm(Math.min(okBank, 1439))}</div></div>`;
     if (kind === "wd") {
@@ -1018,12 +1040,12 @@ function openEditor(k) {
 
 /* ---------- ajustes ---------- */
 const TIME_FIELDS = { "s-p0": ["plan", 0], "s-p1": ["plan", 1], "s-p2": ["plan", 2], "s-p3": ["plan", 3], "s-n0": ["normal", 0], "s-n1": ["normal", 1], "s-n2": ["normal", 2], "s-n3": ["normal", 3],
-  "s-satx": ["planSatExit"], "s-ear": ["earliest"], "s-lo": ["lunchOutMin"], "s-ex": ["exitMin"], "s-ss": ["satStart"], "s-sx": ["satExitMin"], "s-se": ["satEnd"] };
+  "s-satx": ["planSatExit"], "s-ear": ["earliest"], "s-lo": ["lunchOutMin"], "s-ex": ["exitMin"], "s-ss": ["satStart"], "s-sx": ["satExitMin"], "s-se": ["satEnd"], "s-lt": ["latest"] };
 function fillSettings() {
   const st = S.settings, ini = +st.initial || 0;
   $("#s-sign").value = ini < 0 ? "-1" : "1"; $("#s-h").value = Math.floor(Math.abs(ini) / 60); $("#s-m").value = Math.abs(ini) % 60;
   for (const [id, [f, i]] of Object.entries(TIME_FIELDS)) $("#" + id).value = i == null ? st[f] : st[f][i];
-  $("#s-sat").value = st.planSat; $("#s-rem").value = st.remind; $("#s-lm").value = st.lunchMin; $("#s-sm").value = st.satMin; $("#s-theme").value = st.theme || "auto";
+  $("#s-sat").value = st.planSat; $("#s-rem").value = st.remind; $("#s-lm").value = st.lunchMin; $("#s-sm").value = st.satMin; $("#s-theme").value = st.theme || "auto"; $("#s-paysat").value = st.paySat ? "1" : "0";
 }
 let setT;
 $("[data-tab=ajustes]").addEventListener("change", e => {
@@ -1033,7 +1055,7 @@ $("[data-tab=ajustes]").addEventListener("change", e => {
   for (const [id, [f, i]] of Object.entries(TIME_FIELDS)) { const val = v(id) || (i == null ? DEFAULTS[f] : DEFAULTS[f][i]); if (i == null) s[f] = val; else { s[f] = s[f].slice(); s[f][i] = val; } }
   s.weekdayMin = (toMin(s.normal[1]) - toMin(s.normal[0])) + (toMin(s.normal[3]) - toMin(s.normal[2]));
   s.planSat = v("s-sat"); s.remind = Math.max(0, +v("s-rem") || 0); s.lunchMin = Math.max(0, +v("s-lm") || 0); s.satMin = Math.max(0, +v("s-sm") || 0);
-  s.theme = v("s-theme"); applyTheme();
+  s.theme = v("s-theme"); applyTheme(); s.paySat = v("s-paysat") === "1";
   save(); clearTimeout(setT); setT = setTimeout(() => toast("Ajustes salvos"), 300);
 });
 $("#s-reset").addEventListener("click", () => { S.settings = { ...DEFAULTS, initial: S.settings.initial, theme: S.settings.theme, importedSeed: S.settings.importedSeed }; save(); fillSettings(); toast("Regras padrão restauradas"); });
