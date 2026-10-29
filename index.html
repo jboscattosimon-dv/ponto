@@ -1,0 +1,903 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Meu Banco de Horas</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+/* Layout: uma coluna estreita tipo app de bolso — saldo no topo, cartão de ponto com o botão-relógio, semana, plano e histórico */
+:root{
+  --bg:#E6EBF1; --surface:#F8FAFC; --surface-2:#EEF2F7; --ink:#111A2C; --muted:#56637A; --line:#CBD4E0;
+  --accent:#FF9B17; --accent-ink:#1E1300; --accent-soft:#FFE7C4;
+  --pos:#08865D; --pos-soft:#D3F1E5; --neg:#CF2140; --neg-soft:#FBDCE2;
+  --hero-bg:#111A2C; --hero-fg:#F2F5FA; --hero-muted:#93A0B8;
+  --shadow:0 1px 0 rgba(17,26,44,.05),0 14px 30px -18px rgba(17,26,44,.35);
+  --f-display:"Bricolage Grotesque",ui-sans-serif,system-ui,sans-serif;
+  --f-body:"Figtree",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
+  --r:18px;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0A0F18; --surface:#131A27; --surface-2:#1A2333; --ink:#E8EDF5; --muted:#8C98AE; --line:#263147;
+  --accent:#FFAD3B; --accent-ink:#1E1300; --accent-soft:#3A2A12;
+  --pos:#35D69F; --pos-soft:#11372B; --neg:#FF6079; --neg-soft:#3E1520;
+  --hero-bg:#182134; --hero-fg:#F2F5FA; --hero-muted:#93A0B8;
+  --shadow:0 1px 0 rgba(0,0,0,.4),0 14px 30px -18px rgba(0,0,0,.8); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0A0F18; --surface:#131A27; --surface-2:#1A2333; --ink:#E8EDF5; --muted:#8C98AE; --line:#263147;
+  --accent:#FFAD3B; --accent-ink:#1E1300; --accent-soft:#3A2A12;
+  --pos:#35D69F; --pos-soft:#11372B; --neg:#FF6079; --neg-soft:#3E1520;
+  --hero-bg:#182134; --hero-fg:#F2F5FA; --hero-muted:#93A0B8;
+  --shadow:0 1px 0 rgba(0,0,0,.4),0 14px 30px -18px rgba(0,0,0,.8); color-scheme:dark}
+
+*{box-sizing:border-box}
+html,body{background:var(--bg)}
+body{color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.45;-webkit-tap-highlight-color:transparent}
+.app{max-width:500px;margin:0 auto;padding-block:14px 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:16px}
+h1,h2,h3{font-family:var(--f-display);margin:0;text-wrap:balance}
+.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)}
+.eyebrow{font-size:11px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--muted)}
+button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
+button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible{outline:2.5px solid var(--accent);outline-offset:2px}
+
+/* topo */
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.top h1{font-size:20px;font-weight:800;letter-spacing:-.01em}
+.top .date{font-size:13px;color:var(--muted)}
+.iconbtn{width:42px;height:42px;border-radius:14px;display:grid;place-items:center;background:var(--surface);box-shadow:var(--shadow);position:relative;overflow:hidden}
+.iconbtn svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:2}
+
+/* saldo */
+.hero{background:var(--hero-bg);color:var(--hero-fg);border-radius:26px;padding:20px 20px 18px;position:relative;overflow:hidden;box-shadow:var(--shadow)}
+.hero::after{content:"";position:absolute;right:-60px;top:-60px;width:220px;height:220px;border-radius:50%;background:radial-gradient(circle,var(--glow,rgba(255,155,23,.35)),transparent 70%);transition:background .6s}
+.hero .eyebrow{color:var(--hero-muted)}
+.balance{font-family:var(--f-display);font-weight:800;font-size:clamp(54px,17vw,76px);line-height:.95;letter-spacing:-.04em;margin:8px 0 10px;font-variant-numeric:tabular-nums;position:relative;z-index:1}
+.balance .u{font-size:.42em;letter-spacing:0;margin:0 2px;opacity:.7}
+.hero-row{display:flex;flex-wrap:wrap;gap:8px;position:relative;z-index:1}
+.pill{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;padding:5px 10px;border-radius:999px;background:rgba(255,255,255,.09);color:var(--hero-fg)}
+.pill .dot{width:7px;height:7px;border-radius:50%;background:currentColor}
+.pill.pos{color:#3EE0A6}.pill.neg{color:#FF7A8F}
+.hero-today{margin-top:14px;padding-top:12px;border-top:1px dashed rgba(255,255,255,.16);display:flex;justify-content:space-between;gap:10px;font-size:13px;color:var(--hero-muted);position:relative;z-index:1}
+.hero-today b{color:var(--hero-fg);font-family:var(--f-mono)}
+
+/* cartão de ponto */
+.card{background:var(--surface);border-radius:var(--r);box-shadow:var(--shadow);padding:18px}
+.card-h{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:14px}
+.card-h h2{font-size:18px;font-weight:700}
+.punchcard{position:relative;padding-left:22px}
+.punchcard::before{content:"";position:absolute;left:0;top:4px;bottom:4px;width:10px;background:radial-gradient(circle at 5px 8px,var(--bg) 3.5px,transparent 4px) 0 0/10px 16px repeat-y;border-right:1px dashed var(--line)}
+.stage{display:grid;place-items:center;padding:6px 0 18px;position:relative}
+.ring{position:relative;width:200px;height:200px;max-width:100%}
+.ring svg{position:absolute;inset:0;width:100%;height:100%;transform:rotate(-90deg)}
+.ring .trk{stroke:var(--surface-2);stroke-width:10;fill:none}
+.ring .prg{stroke:var(--accent);stroke-width:10;fill:none;stroke-linecap:round;transition:stroke-dashoffset 1s cubic-bezier(.2,.8,.2,1),stroke .4s}
+.ring .prg.over{stroke:var(--pos)}
+.punch{position:absolute;inset:20px;border-radius:50%;background:var(--accent);color:var(--accent-ink);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;box-shadow:0 10px 0 -2px color-mix(in srgb,var(--accent) 55%,#000),0 22px 30px -12px color-mix(in srgb,var(--accent) 70%,transparent);transition:transform .12s,box-shadow .12s,background .3s;overflow:hidden;user-select:none}
+.punch:active,.punch.pressed{transform:translateY(7px) scale(.98);box-shadow:0 3px 0 -2px color-mix(in srgb,var(--accent) 55%,#000),0 8px 16px -10px color-mix(in srgb,var(--accent) 70%,transparent)}
+.punch .k{font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;opacity:.75}
+.punch .v{font-family:var(--f-display);font-weight:800;font-size:26px;line-height:1.05;text-align:center;padding:0 14px}
+.punch .clock{font-family:var(--f-mono);font-size:14px;font-weight:700;opacity:.8;margin-top:4px}
+.punch.done{background:var(--surface-2);color:var(--ink);box-shadow:0 6px 0 -2px var(--line)}
+.punch.warn{background:var(--neg);color:#fff}
+.punch.idle-pulse::after{content:"";position:absolute;inset:-4px;border-radius:50%;border:3px solid var(--accent);animation:pulse 2.4s ease-out infinite}
+@keyframes pulse{0%{transform:scale(.9);opacity:.8}100%{transform:scale(1.25);opacity:0}}
+
+.live{display:flex;justify-content:center;gap:18px;font-size:13px;color:var(--muted);text-align:center;flex-wrap:wrap}
+.live b{display:block;font-family:var(--f-mono);font-size:18px;color:var(--ink)}
+.slots{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px}
+.slot{position:relative;background:var(--surface-2);border-radius:14px;padding:10px 12px;text-align:left;overflow:hidden;transition:transform .15s}
+.slot:active{transform:scale(.97)}
+.slot .l{font-size:11.5px;color:var(--muted);font-weight:600;letter-spacing:.04em;text-transform:uppercase}
+.slot .t{font-family:var(--f-mono);font-size:22px;font-weight:700;letter-spacing:-.02em;display:inline-block}
+.slot .t.empty{color:var(--line)}
+.slot.next{box-shadow:inset 0 0 0 2px var(--accent)}
+.slot .hint{font-size:11.5px;color:var(--muted)}
+.t.stamp{animation:stamp .55s cubic-bezier(.2,1.6,.4,1) both;color:var(--ink)}
+@keyframes stamp{0%{transform:scale(2.4) rotate(-14deg);opacity:0;filter:blur(3px)}60%{transform:scale(.92) rotate(2deg);opacity:1;filter:none}100%{transform:none}}
+.warns{display:flex;flex-direction:column;gap:6px;margin-top:12px}
+.warn-row{display:flex;gap:8px;align-items:flex-start;font-size:13px;padding:8px 10px;border-radius:12px;background:var(--neg-soft);color:var(--ink)}
+.warn-row::before{content:"!";flex:none;width:18px;height:18px;border-radius:50%;background:var(--neg);color:#fff;font-weight:800;font-size:12px;display:grid;place-items:center;margin-top:1px}
+.ok-row{background:var(--pos-soft)}
+.ok-row::before{content:"✓";background:var(--pos)}
+
+.seg{display:flex;background:var(--surface-2);border-radius:14px;padding:4px;gap:4px}
+.seg button{flex:1;padding:9px 6px;border-radius:10px;font-weight:600;font-size:13.5px;color:var(--muted);position:relative;overflow:hidden;transition:background .2s,color .2s}
+.seg button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:var(--shadow)}
+
+/* previsão */
+.fore{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px}
+.fbox{border:1px solid var(--line);border-radius:14px;padding:10px 12px}
+.fbox .l{font-size:12px;color:var(--muted)}
+.fbox .v{font-family:var(--f-mono);font-size:20px;font-weight:700}
+.fbox .s{font-size:12px;color:var(--muted)}
+
+/* semana */
+.week{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px}
+.wd{display:flex;flex-direction:column;align-items:center;gap:6px;padding:8px 2px;border-radius:14px;position:relative;overflow:hidden;transition:background .2s}
+.wd:hover{background:var(--surface-2)}
+.wd .n{font-size:12px;font-weight:700;color:var(--muted)}
+.wd.today .n{color:var(--accent)}
+.bar{width:100%;max-width:30px;height:84px;background:var(--surface-2);border-radius:9px;position:relative;overflow:hidden}
+.bar i{position:absolute;left:0;right:0;bottom:0;background:var(--ink);border-radius:9px;transform-origin:bottom;animation:grow .8s cubic-bezier(.2,.8,.2,1) both}
+.week.static .bar i{animation:none}
+.bar i.pos{background:var(--pos)}.bar i.neg{background:var(--neg)}.bar i.run{background:var(--accent)}
+.bar .goal{position:absolute;left:-2px;right:-2px;height:2px;background:var(--muted);opacity:.5}
+@keyframes grow{from{transform:scaleY(0)}}
+.wd .d{font-family:var(--f-mono);font-size:11.5px;font-weight:700;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+.d.pos{color:var(--pos)}.d.neg{color:var(--neg)}.d.na{color:var(--muted);font-family:var(--f-body);font-weight:600}
+.weeksum{display:flex;justify-content:space-between;font-size:13px;margin-top:12px;padding-top:12px;border-top:1px solid var(--line)}
+
+/* plano */
+.plan{display:flex;flex-direction:column;gap:8px}
+.opt{display:flex;gap:12px;align-items:center;padding:12px;border-radius:14px;background:var(--surface-2)}
+.opt .ic{flex:none;width:38px;height:38px;border-radius:12px;display:grid;place-items:center;font-family:var(--f-mono);font-weight:700;font-size:12px;background:var(--surface);color:var(--ink)}
+.opt .ic.pos{background:var(--pos-soft);color:var(--pos)}.opt .ic.neg{background:var(--neg-soft);color:var(--neg)}
+.opt .tx{min-width:0;font-size:14px}
+.opt .tx small{display:block;color:var(--muted);font-size:12.5px}
+
+/* avisos */
+.rem{display:flex;flex-direction:column;gap:2px}
+.rem-row{display:grid;grid-template-columns:58px 1fr auto;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}
+.rem-row:last-child{border-bottom:0}
+.rem-row .tm{font-family:var(--f-mono);font-weight:700;font-size:16px}
+.rem-row .st{font-size:11.5px;font-weight:700;padding:3px 8px;border-radius:999px;background:var(--surface-2);color:var(--muted)}
+.rem-row.past{opacity:.5}
+.rem-row.soon .st{background:var(--accent-soft);color:var(--ink)}
+.btnrow{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.btn{position:relative;overflow:hidden;padding:11px 16px;border-radius:13px;font-weight:700;font-size:14px;background:var(--surface-2);transition:transform .12s}
+.btn:active{transform:scale(.96)}
+.btn.primary{background:var(--ink);color:var(--surface)}
+.btn.accent{background:var(--accent);color:var(--accent-ink)}
+.btn.danger{color:var(--neg)}
+.btn.grow{flex:1}
+
+/* histórico */
+.hist{display:flex;flex-direction:column}
+.hrow{display:grid;grid-template-columns:48px 1fr auto;gap:12px;align-items:center;padding:11px 4px;border-bottom:1px solid var(--line);text-align:left;position:relative;overflow:hidden;border-radius:10px}
+.hrow:last-child{border-bottom:0}
+.hrow .dd{text-align:center;line-height:1.1}
+.hrow .dd b{display:block;font-family:var(--f-display);font-size:20px}
+.hrow .dd span{font-size:11px;color:var(--muted);text-transform:uppercase;font-weight:700}
+.hrow .tt{font-family:var(--f-mono);font-size:13px;color:var(--muted);min-width:0;overflow-wrap:anywhere}
+.hrow .tt em{font-style:normal;color:var(--neg);font-family:var(--f-body);font-size:12px;display:block}
+.chip{font-family:var(--f-mono);font-weight:700;font-size:13px;padding:4px 9px;border-radius:9px;background:var(--surface-2);white-space:nowrap}
+.chip.pos{background:var(--pos-soft);color:var(--pos)}.chip.neg{background:var(--neg-soft);color:var(--neg)}
+.empty-state{padding:18px 6px;color:var(--muted);font-size:14px;text-align:center}
+
+details.rules summary{cursor:pointer;font-family:var(--f-display);font-weight:700;font-size:18px;list-style:none;display:flex;justify-content:space-between;align-items:center}
+details.rules summary::-webkit-details-marker{display:none}
+details.rules summary::after{content:"+";font-size:24px;color:var(--muted);transition:transform .25s}
+details.rules[open] summary::after{transform:rotate(45deg)}
+.rules-grid{display:grid;grid-template-columns:auto 1fr;gap:8px 14px;margin-top:14px;font-size:14px}
+.rules-grid .mono{font-weight:700}
+.foot{font-size:12px;color:var(--muted);text-align:center}
+
+/* folha (sheet) */
+.scrim{position:fixed;inset:0;background:rgba(5,10,20,.5);backdrop-filter:blur(3px);z-index:40;opacity:0;transition:opacity .25s;pointer-events:none}
+.scrim.on{opacity:1;pointer-events:auto}
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:41;max-width:520px;margin:0 auto;background:var(--surface);border-radius:24px 24px 0 0;padding:10px max(18px,env(safe-area-inset-right,0px)) calc(20px + env(safe-area-inset-bottom,0px)) max(18px,env(safe-area-inset-left,0px));max-height:88vh;overflow:auto;transform:translateY(105%);visibility:hidden;transition:transform .35s cubic-bezier(.2,.9,.2,1),visibility 0s .35s}
+.sheet.on{transform:none;visibility:visible;transition:transform .35s cubic-bezier(.2,.9,.2,1)}
+.grab{width:42px;height:5px;border-radius:5px;background:var(--line);margin:0 auto 14px}
+.sheet h3{font-size:20px;font-weight:800;margin-bottom:14px}
+.fields{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.field{display:flex;flex-direction:column;gap:4px;min-width:0}
+.field.full{grid-column:1/-1}
+.field label{font-size:12px;font-weight:700;color:var(--muted);letter-spacing:.03em}
+.field input,.field select{font:inherit;font-family:var(--f-mono);font-size:17px;padding:10px 12px;border-radius:12px;border:1.5px solid var(--line);background:var(--surface-2);color:var(--ink);width:100%;min-width:0}
+.field small{color:var(--muted);font-size:12px}
+.sheet .sec{font-family:var(--f-display);font-weight:700;font-size:15px;margin:18px 0 8px}
+.preview{margin-top:12px;padding:10px 12px;border-radius:12px;background:var(--surface-2);font-size:13.5px}
+
+/* efeitos */
+.ripple{position:absolute;border-radius:50%;pointer-events:none;background:currentColor;opacity:.22;transform:scale(0);animation:rip .6s ease-out forwards}
+@keyframes rip{to{transform:scale(1);opacity:0}}
+.spark{position:fixed;width:9px;height:9px;border-radius:3px;pointer-events:none;z-index:60;animation:fly .9s cubic-bezier(.15,.8,.3,1) forwards}
+@keyframes fly{to{transform:translate(var(--dx),var(--dy)) rotate(var(--rot));opacity:0}}
+.toast{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom,0px));transform:translate(-50%,140%);z-index:70;background:var(--ink);color:var(--surface);padding:12px 16px;border-radius:16px;font-weight:600;font-size:14px;max-width:calc(100% - 32px);width:max-content;box-shadow:0 20px 40px -12px rgba(0,0,0,.5);transition:transform .35s cubic-bezier(.2,1.3,.4,1)}
+.toast.on{transform:translate(-50%,0)}
+.toast.alert{background:var(--accent);color:var(--accent-ink)}
+.rise{animation:rise .5s cubic-bezier(.2,.8,.2,1) both}
+@keyframes rise{from{transform:translateY(10px)}}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+</style>
+
+<div class="app" id="app">
+  <header class="top">
+    <div>
+      <h1>Meu Banco de Horas</h1>
+      <div class="date" id="today-label">—</div>
+    </div>
+    <button class="iconbtn fx" id="open-settings" aria-label="Ajustes">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+    </button>
+  </header>
+
+  <section class="hero" aria-live="polite">
+    <div class="eyebrow">Saldo do banco de horas</div>
+    <div class="balance" id="balance">0<span class="u">h</span>00</div>
+    <div class="hero-row" id="hero-pills"></div>
+    <div class="hero-today"><span>Hoje até agora</span><b id="hero-today">—</b></div>
+  </section>
+
+  <section class="card">
+    <div class="card-h"><h2>Ponto de hoje</h2><span class="eyebrow" id="day-kind">—</span></div>
+    <div id="sat-choice" hidden style="margin-bottom:16px">
+      <div class="seg" role="group" aria-label="Sábado">
+        <button class="fx" id="sat-work" aria-pressed="true">Vou trabalhar</button>
+        <button class="fx" id="sat-off" aria-pressed="false">Folgar (−4h)</button>
+      </div>
+    </div>
+    <div class="punchcard">
+      <div class="stage">
+        <div class="ring">
+          <svg viewBox="0 0 200 200"><circle class="trk" cx="100" cy="100" r="92"/><circle class="prg" id="prg" cx="100" cy="100" r="92" stroke-dasharray="578" stroke-dashoffset="578"/></svg>
+          <button class="punch" id="punch"><span class="k" id="punch-k">Bater</span><span class="v" id="punch-v">Entrada</span><span class="clock" id="punch-clock">--:--</span></button>
+        </div>
+      </div>
+      <div class="live" id="live"></div>
+      <div class="slots" id="slots"></div>
+      <div class="fore" id="fore"></div>
+      <div class="warns" id="warns"></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="card-h"><h2>Avisos de hoje</h2><span class="eyebrow" id="notif-state">no app</span></div>
+    <div class="rem" id="rem"></div>
+    <div class="btnrow">
+      <button class="btn fx grow" id="enable-alerts">Ativar som e notificação</button>
+      <button class="btn primary fx grow" id="export-ics">Lembretes na agenda do celular</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="card-h"><h2>Esta semana</h2><span class="eyebrow" id="week-range">—</span></div>
+    <div class="week" id="week"></div>
+    <div class="weeksum" id="weeksum"></div>
+  </section>
+
+  <section class="card">
+    <div class="card-h"><h2 id="plan-title">Como zerar o saldo</h2></div>
+    <div class="plan" id="plan"></div>
+  </section>
+
+  <section class="card">
+    <div class="card-h"><h2>Histórico</h2><button class="btn fx" id="add-day" style="padding:8px 12px">+ Lançar dia</button></div>
+    <div class="hist" id="hist"></div>
+  </section>
+
+  <section class="card">
+    <details class="rules">
+      <summary>Regras da empresa</summary>
+      <div class="rules-grid" id="rules"></div>
+    </details>
+  </section>
+
+  <div class="foot" id="foot">Carregando…</div>
+</div>
+
+<div class="scrim" id="scrim"></div>
+<div class="sheet" id="sheet" role="dialog" aria-modal="true"><div class="grab"></div><div id="sheet-body"></div></div>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+(() => {
+const $ = s => document.querySelector(s);
+const pad = n => String(n).padStart(2, "0");
+const toMin = t => { if (!t) return null; const [a, b] = t.split(":").map(Number); return a * 60 + b; };
+const hhmm = m => { m = ((Math.round(m) % 1440) + 1440) % 1440; return pad(Math.floor(m / 60)) + ":" + pad(m % 60); };
+const dur = m => { m = Math.round(Math.abs(m)); return Math.floor(m / 60) + "h" + pad(m % 60); };
+const sdur = m => (Math.round(m) > 0 ? "+" : Math.round(m) < 0 ? "−" : "") + dur(m);
+const cls = m => Math.round(m) > 0 ? "pos" : Math.round(m) < 0 ? "neg" : "";
+const keyOf = d => d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
+const parseKey = k => { const [y, m, d] = k.split("-").map(Number); return new Date(y, m - 1, d); };
+const todayKey = () => keyOf(new Date());
+const nowMin = () => { const d = new Date(); return d.getHours() * 60 + d.getMinutes(); };
+const DOW = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+const DOWL = ["domingo", "segunda", "terça", "quarta", "quinta", "sexta", "sábado"];
+const MON = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
+const kindOf = k => { const w = parseKey(k).getDay(); return w === 0 ? "sun" : w === 6 ? "sat" : "wd"; };
+const LABELS = { wd: ["Entrada", "Saída almoço", "Volta almoço", "Saída"], sat: ["Entrada", "Saída"], sun: ["Entrada", "Saída"] };
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+const DEFAULTS = {
+  initial: 0,
+  earliest: "07:45", lunchOutMin: "11:30", lunchMin: 60, exitMin: "17:30",
+  normal: ["08:30", "12:00", "13:30", "18:00"],
+  satStart: "08:00", satExitMin: "10:00", satEnd: "12:00",
+  weekdayMin: 480, satMin: 240,
+  plan: ["08:30", "12:00", "13:30", "18:00"], planSat: "work", planSatExit: "12:00",
+  remind: 5
+};
+let S = { settings: { ...DEFAULTS }, days: {} };
+let db = null, docRef = null, storeMode = "local", dirty = false, saveTimer = null, remoteSeen = false;
+
+/* ---------- cálculo ---------- */
+function calc(k, r) {
+  const st = S.settings, kind = kindOf(k), isToday = k === todayKey(), now = isToday ? nowMin() : null;
+  const holiday = r && r.k === "holiday";
+  const expected = holiday ? 0 : kind === "wd" ? st.weekdayMin : kind === "sat" ? st.satMin : 0;
+  const o = { expected, worked: 0, diff: 0, complete: false, running: false, atLunch: false, warns: [], adj: (r && +r.adj) || 0, lunch: null };
+  if (!r) return o;
+  if (r.k === "off" || holiday) { o.complete = true; o.diff = -expected + o.adj; return o; }
+  const p = (r.p || []).map(toMin);
+  let w = 0;
+  if (kind === "wd") {
+    const [a, b, c, d] = p;
+    if (a == null) { if (o.adj) { o.complete = true; o.diff = o.adj - expected; } return o; }
+    const e = Math.max(a, toMin(st.earliest));
+    if (a < toMin(st.earliest)) o.warns.push(`Entrada ${hhmm(a)}: só conta a partir de ${st.earliest}`);
+    if (b != null && b < toMin(st.lunchOutMin)) o.warns.push(`Saiu para o almoço às ${hhmm(b)}, antes de ${st.lunchOutMin}`);
+    if (b == null) {
+      if (d != null) { w = d - e - (r.noLunch ? 0 : st.lunchMin); o.complete = true; if (!r.noLunch) o.warns.push(`Sem almoço registrado: ${dur(st.lunchMin)} descontada`); }
+      else { w = isToday ? Math.max(0, now - e) : 0; o.running = isToday; }
+    } else if (c == null) {
+      w = b - e; o.atLunch = isToday && d == null;
+      if (d != null) { w = d - e - st.lunchMin; o.complete = true; o.warns.push("Volta do almoço não registrada: 1h descontada"); }
+    } else {
+      const lunch = c - b; o.lunch = lunch;
+      const pen = Math.max(0, st.lunchMin - lunch);
+      if (pen) o.warns.push(`Almoço de ${dur(lunch)}: mínimo é ${dur(st.lunchMin)}, ${dur(pen)} não conta`);
+      if (d == null) { w = b - e + (isToday ? Math.max(0, now - c) : 0) - pen; o.running = isToday; }
+      else { w = b - e + d - c - pen; o.complete = true; if (d < toMin(st.exitMin)) o.warns.push(`Saída ${hhmm(d)}, antes de ${st.exitMin}`); }
+    }
+  } else {
+    const [a, b] = p;
+    if (a == null) return o;
+    const start = kind === "sat" ? Math.max(a, toMin(st.satStart)) : a;
+    if (kind === "sat" && a < toMin(st.satStart)) o.warns.push(`Sábado começa ${st.satStart}: conta a partir daí`);
+    if (b == null) { w = isToday ? Math.max(0, now - start) : 0; o.running = isToday; }
+    else { w = b - start; o.complete = true; if (kind === "sat" && b < toMin(st.satExitMin)) o.warns.push(`Sábado: saída mínima ${st.satExitMin}`); }
+  }
+  o.worked = Math.max(0, w);
+  o.diff = o.worked - expected + o.adj;
+  if (!o.complete && !isToday && k < todayKey()) o.warns.push("Ponto incompleto: não entra no saldo");
+  return o;
+}
+function closedBank(excludeToday) {
+  const t = todayKey(); let sum = +S.settings.initial || 0;
+  for (const [k, r] of Object.entries(S.days)) {
+    if (k > t || (excludeToday && k === t)) continue;
+    const c = calc(k, r); if (c.complete) sum += c.diff;
+  }
+  return sum;
+}
+
+/* ---------- persistência ---------- */
+const LS = "bh-state-v1";
+function lsLoad() { try { const v = JSON.parse(localStorage.getItem(LS)); if (v && v.days) S = { settings: { ...DEFAULTS, ...v.settings }, days: v.days }; } catch (e) {} }
+function lsSave() { try { localStorage.setItem(LS, JSON.stringify(S)); } catch (e) {} }
+function save() {
+  dirty = true; lsSave();
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(async () => {
+    if (!docRef || !remoteSeen) return;
+    try { await docRef.set(JSON.parse(JSON.stringify(S))); dirty = false; foot(); }
+    catch (e) { storeMode = "local"; foot("Não consegui salvar na conta agora; ficou salvo neste aparelho."); }
+  }, 500);
+}
+function foot(msg) {
+  $("#foot").textContent = msg || (storeMode === "cloud" ? "Salvo na sua conta Claude: abre igual no celular e no computador." : "Salvo neste aparelho.");
+}
+async function initStore() {
+  try {
+    if (!window.claude || !window.claude.use) { foot(); return; }
+    const [d, u] = await Promise.all([window.claude.use("db"), window.claude.use("user")]);
+    const id = u ? await u.id() : null;
+    if (!d || !id) { foot(); return; }
+    db = d; docRef = db.doc("data/users/" + id + "/banco");
+    docRef.onSnapshot(snap => {
+      if (snap.metadata.hasPendingWrites) return;
+      const first = !remoteSeen; remoteSeen = true; storeMode = "cloud";
+      if (snap.exists) {
+        const v = snap.data();
+        const remote = { settings: { ...DEFAULTS, ...(v.settings || {}) }, days: { ...(v.days || {}) } };
+        if (first && dirty) { remote.days = { ...remote.days, ...S.days }; S = remote; save(); }
+        else if (JSON.stringify(remote) !== JSON.stringify(S)) { S = remote; lsSave(); }
+      } else if (first && (dirty || Object.keys(S.days).length || S.settings.initial)) { save(); }
+      foot(); render();
+      if (first) importSeed();
+    }, () => { storeMode = "local"; foot(); });
+  } catch (e) { foot(); }
+}
+
+async function importSeed() {
+  try {
+    const snap = await db.doc("seed/cartao").get();
+    if (!snap.exists) return;
+    const v = snap.data();
+    if (!v.version || S.settings.importedSeed === v.version) return;
+    let n = 0;
+    for (const [k, r] of Object.entries(v.days || {})) if (!S.days[k]) { S.days[k] = r; n++; }
+    S.settings.importedSeed = v.version; save(); render();
+    if (n) toast(`${n} dias importados do cartão ponto`);
+  } catch (e) {}
+}
+
+/* ---------- efeitos ---------- */
+document.addEventListener("pointerdown", e => {
+  const el = e.target.closest(".fx,.btn,.slot,.wd,.hrow,.punch,.seg button");
+  if (!el) return;
+  const r = el.getBoundingClientRect(), s = Math.max(r.width, r.height) * 2.2;
+  const sp = document.createElement("span"); sp.className = "ripple";
+  sp.style.cssText = `width:${s}px;height:${s}px;left:${e.clientX - r.left - s / 2}px;top:${e.clientY - r.top - s / 2}px`;
+  el.appendChild(sp); setTimeout(() => sp.remove(), 650);
+});
+function burst(el, colors) {
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  const r = el.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+  for (let i = 0; i < 22; i++) {
+    const s = document.createElement("i"); s.className = "spark";
+    const a = Math.random() * Math.PI * 2, d = 90 + Math.random() * 90;
+    s.style.cssText = `left:${cx}px;top:${cy}px;background:${colors[i % colors.length]};--dx:${Math.cos(a) * d}px;--dy:${Math.sin(a) * d}px;--rot:${Math.random() * 540}deg;border-radius:${i % 3 ? 3 : 50}%`;
+    document.body.appendChild(s); setTimeout(() => s.remove(), 950);
+  }
+}
+let toastT;
+function toast(msg, alert) {
+  const t = $("#toast"); t.textContent = msg; t.className = "toast on" + (alert ? " alert" : "");
+  clearTimeout(toastT); toastT = setTimeout(() => t.className = "toast" + (alert ? " alert" : ""), alert ? 7000 : 2600);
+}
+let lastBal = null;
+function animateBalance(to) {
+  const el = $("#balance"), from = lastBal == null ? 0 : lastBal; lastBal = to;
+  const put = v => { const sign = Math.round(v) > 0 ? "+" : Math.round(v) < 0 ? "−" : ""; const a = Math.round(Math.abs(v)); el.innerHTML = `${sign}${Math.floor(a / 60)}<span class="u">h</span>${pad(a % 60)}`; };
+  if (from === to || matchMedia("(prefers-reduced-motion: reduce)").matches) return put(to);
+  const t0 = performance.now(), D = 900;
+  const step = t => { const k = Math.min(1, (t - t0) / D), e = 1 - Math.pow(1 - k, 3); put(from + (to - from) * e); if (k < 1) requestAnimationFrame(step); };
+  requestAnimationFrame(step);
+}
+
+/* ---------- avisos ---------- */
+let audioCtx = null, fired = {};
+try { fired = JSON.parse(localStorage.getItem("bh-fired") || "{}"); } catch (e) {}
+function beep() {
+  try {
+    if (!audioCtx) return;
+    [0, .22, .44].forEach((t, i) => {
+      const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+      o.frequency.value = [880, 1175, 1568][i]; o.type = "sine";
+      g.gain.setValueAtTime(.0001, audioCtx.currentTime + t);
+      g.gain.exponentialRampToValueAtTime(.25, audioCtx.currentTime + t + .02);
+      g.gain.exponentialRampToValueAtTime(.0001, audioCtx.currentTime + t + .2);
+      o.connect(g).connect(audioCtx.destination); o.start(audioCtx.currentTime + t); o.stop(audioCtx.currentTime + t + .22);
+    });
+  } catch (e) {}
+}
+function notify(title, body) {
+  toast(title + (body ? " · " + body : ""), true); beep();
+  try { navigator.vibrate && navigator.vibrate([220, 120, 220]); } catch (e) {}
+  try { if ("Notification" in window && Notification.permission === "granted") new Notification(title, { body }); } catch (e) {}
+}
+function reminders() {
+  const k = todayKey(), kind = kindOf(k), r = S.days[k], st = S.settings, out = [];
+  if (kind === "sun" || (r && r.k !== "work")) return out;
+  const p = ((r && r.p) || []).map(toMin);
+  if (kind === "wd") {
+    const pl = st.plan.map(toMin);
+    out.push({ id: "in", at: pl[0], t: "Entrada", s: p[0] != null ? hhmm(p[0]) : null, b: `Entre a partir de ${st.earliest} para ganhar minutos` });
+    out.push({ id: "lo", at: pl[1], t: "Saída para o almoço", s: p[1] != null ? hhmm(p[1]) : null, b: `Almoço mínimo de ${dur(st.lunchMin)}` });
+    const back = p[1] != null ? p[1] + st.lunchMin : pl[2];
+    out.push({ id: "lb", at: back, t: p[1] != null ? "Volta do almoço liberada" : "Volta do almoço", s: p[2] != null ? hhmm(p[2]) : null, b: "Já pode bater a volta" });
+    const f = forecast();
+    out.push({ id: "out", at: f && f.exitDay != null ? Math.max(f.exitDay, toMin(st.exitMin)) : pl[3], t: "Saída: dia fechado", s: p[3] != null ? hhmm(p[3]) : null, b: "Bata o ponto de saída" });
+  } else {
+    out.push({ id: "in", at: toMin(st.satStart), t: "Entrada de sábado", s: p[0] != null ? hhmm(p[0]) : null, b: "" });
+    const f = forecast();
+    out.push({ id: "out", at: f && f.exitDay != null ? f.exitDay : toMin(st.satEnd), t: "Saída de sábado", s: p[1] != null ? hhmm(p[1]) : null, b: `Saída mínima ${st.satExitMin}` });
+  }
+  return out;
+}
+function checkAlerts() {
+  const k = todayKey(), now = nowMin(), lead = +S.settings.remind || 0;
+  for (const r of reminders()) {
+    if (r.s || r.at == null) continue;
+    const id = k + ":" + r.id + ":" + r.at;
+    if (fired[id]) continue;
+    if (now >= r.at - lead && now <= r.at + 3) {
+      fired[id] = 1; try { localStorage.setItem("bh-fired", JSON.stringify(fired)); } catch (e) {}
+      notify(r.t + (now < r.at ? ` às ${hhmm(r.at)}` : " agora"), r.b);
+    }
+  }
+}
+$("#enable-alerts").addEventListener("click", async () => {
+  try { audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)(); await audioCtx.resume(); } catch (e) {}
+  let perm = "indisponível";
+  try { if ("Notification" in window) perm = await Notification.requestPermission(); } catch (e) {}
+  beep(); try { navigator.vibrate && navigator.vibrate(80); } catch (e) {}
+  $("#notif-state").textContent = perm === "granted" ? "notificação ligada" : "som ligado";
+  $("#enable-alerts").textContent = "Som ligado ✓";
+  toast(perm === "granted" ? "Avisos ligados com som e notificação" : "Som ligado. Para avisos com a tela bloqueada, use a agenda do celular");
+});
+
+/* ---------- arquivo .ics ---------- */
+$("#export-ics").addEventListener("click", async () => {
+  const st = S.settings, d0 = new Date(), lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//MeuBancoDeHoras//PT", "CALSCALE:GREGORIAN"];
+  const nextDow = dow => { const d = new Date(d0); d.setDate(d.getDate() + ((dow - d.getDay() + 7) % 7)); return d; };
+  const stamp = d => d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate());
+  const now = new Date(), dtstamp = now.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
+  let n = 0;
+  const ev = (date, time, title, desc, byday) => {
+    n++;
+    lines.push("BEGIN:VEVENT", `UID:bh-${n}-${stamp(date)}@meubancodehoras`, `DTSTAMP:${dtstamp}`,
+      `DTSTART:${stamp(date)}T${time.replace(":", "")}00`, "DURATION:PT5M", `RRULE:FREQ=WEEKLY;BYDAY=${byday}`,
+      `SUMMARY:${title}`, `DESCRIPTION:${desc}`, "BEGIN:VALARM", "ACTION:DISPLAY", `DESCRIPTION:${title}`,
+      `TRIGGER:-PT${Math.max(0, +st.remind || 0)}M`, "END:VALARM", "BEGIN:VALARM", "ACTION:DISPLAY", `DESCRIPTION:${title}`, "TRIGGER:PT0M", "END:VALARM", "END:VEVENT");
+  };
+  const mon = nextDow(1), sat = nextDow(6);
+  ev(mon, st.plan[0], "⏱ Bater entrada", `Entrada a partir de ${st.earliest}`, "MO,TU,WE,TH,FR");
+  ev(mon, st.plan[1], "🍽 Bater saída do almoço", `Almoço mínimo ${dur(st.lunchMin)}`, "MO,TU,WE,TH,FR");
+  ev(mon, st.plan[2], "↩ Bater volta do almoço", "Confira se já deu 1h de almoço", "MO,TU,WE,TH,FR");
+  ev(mon, st.plan[3], "🏁 Bater saída", `Saída mínima ${st.exitMin}`, "MO,TU,WE,TH,FR");
+  if (st.planSat === "work") {
+    ev(sat, st.satStart, "⏱ Sábado: bater entrada", "Sábado começa às " + st.satStart, "SA");
+    ev(sat, st.planSatExit, "🏁 Sábado: bater saída", `Saída mínima ${st.satExitMin}`, "SA");
+  }
+  lines.push("END:VCALENDAR");
+  const text = lines.join("\r\n");
+  try {
+    const dl = await window.claude?.use?.("downloads");
+    if (!dl) throw { code: "unavailable" };
+    await dl.save({ filename: "lembretes-ponto.ics", data: text });
+    toast("Arquivo salvo. Abra no celular para adicionar à agenda");
+  } catch (e) {
+    if (e && e.code === "declined") return;
+    if (e && e.code === "rejected_extension") {
+      try { const dl = await window.claude.use("downloads"); await dl.save({ filename: "lembretes-ponto.txt", data: text }); toast("Salvo como .txt: renomeie para .ics e abra no celular"); return; } catch (e2) {}
+    }
+    toast("Não deu para salvar o arquivo aqui. Tente pelo app Claude ou navegador");
+  }
+});
+
+/* ---------- previsão ---------- */
+function forecast() {
+  const k = todayKey(), kind = kindOf(k), r = S.days[k], st = S.settings;
+  if (!r || r.k !== "work") return null;
+  const p = (r.p || []).map(toMin), now = nowMin(), bank = closedBank(true);
+  if (p[0] == null) return null;
+  if (kind === "wd") {
+    const e = Math.max(p[0], toMin(st.earliest));
+    let lunch = st.lunchMin;
+    if (p[1] != null && p[2] != null) lunch = Math.max(st.lunchMin, p[2] - p[1]);
+    else if (p[1] != null) lunch = Math.max(st.lunchMin, now - p[1]);
+    const exitDay = e + st.weekdayMin + lunch;
+    return { exitDay, exitBank: exitDay - bank, min: toMin(st.exitMin), backAt: p[1] != null ? p[1] + st.lunchMin : null };
+  }
+  const s = kind === "sat" ? Math.max(p[0], toMin(st.satStart)) : p[0];
+  const exitDay = s + (kind === "sat" ? st.satMin : 0);
+  return { exitDay, exitBank: exitDay - bank, min: kind === "sat" ? toMin(st.satExitMin) : null };
+}
+
+/* ---------- ponto ---------- */
+let confirmUntil = 0, confirmFor = null;
+$("#punch").addEventListener("click", () => {
+  const k = todayKey(), kind = kindOf(k), st = S.settings;
+  const r = S.days[k] || { k: "work", p: [] };
+  if (r.k !== "work") { openEditor(k); return; }
+  const n = LABELS[kind].length, idx = [...Array(n).keys()].find(i => !(r.p || [])[i]);
+  if (idx == null) { openEditor(k); return; }
+  const now = nowMin(), p = (r.p || []).map(toMin);
+  let warn = null;
+  if (kind === "wd" && idx === 2 && now - p[1] < st.lunchMin) warn = `Almoço de ${dur(now - p[1])}: menos de ${dur(st.lunchMin)}, a diferença não conta.`;
+  if (kind === "wd" && idx === 1 && now < toMin(st.lunchOutMin)) warn = `Antes de ${st.lunchOutMin}: fora da regra.`;
+  if (kind === "wd" && idx === 3 && now < toMin(st.exitMin)) warn = `Antes de ${st.exitMin}: fora da regra.`;
+  if (kind === "sat" && idx === 1 && now < toMin(st.satExitMin)) warn = `Antes de ${st.satExitMin}: fora da regra.`;
+  if (warn && !(confirmFor === idx && Date.now() < confirmUntil)) {
+    confirmFor = idx; confirmUntil = Date.now() + 5000;
+    toast(warn + " Toque de novo para confirmar.", true);
+    $("#punch").classList.add("warn"); setTimeout(() => $("#punch").classList.remove("warn"), 5000);
+    return;
+  }
+  confirmFor = null; $("#punch").classList.remove("warn");
+  r.k = "work"; r.p = (r.p || []).slice(); r.p[idx] = hhmm(now);
+  S.days[k] = r; save();
+  stampIdx = idx;
+  burst($("#punch"), ["var(--accent)", "var(--pos)", "var(--ink)", "#FFD27A"]);
+  try { navigator.vibrate && navigator.vibrate(35); } catch (e) {}
+  toast(`${LABELS[kind][idx]} às ${hhmm(now)}`);
+  render();
+});
+let stampIdx = null;
+$("#sat-work").addEventListener("click", () => {
+  const k = todayKey(); const r = S.days[k];
+  if (r && r.k === "off") { delete S.days[k]; save(); render(); }
+});
+$("#sat-off").addEventListener("click", () => {
+  const k = todayKey();
+  S.days[k] = { k: "off", p: [] }; save();
+  burst($("#sat-off"), ["var(--neg)", "var(--accent)"]);
+  toast(`Folga registrada: ${sdur(-S.settings.satMin)} no banco`); render();
+});
+
+/* ---------- render ---------- */
+function render() {
+  const k = todayKey(), d = new Date(), kind = kindOf(k), st = S.settings, r = S.days[k], c = calc(k, r);
+  $("#today-label").textContent = `${DOWL[d.getDay()]}, ${d.getDate()} de ${MON[d.getMonth()]}`;
+  $("#day-kind").textContent = kind === "wd" ? "dia útil · meta 8h" : kind === "sat" ? "sábado · meta 4h" : "domingo";
+
+  // saldo
+  const bankClosed = closedBank(true), bankAll = closedBank(false);
+  const live = c.complete ? bankAll : bankClosed + (r && r.k === "work" && (c.running || c.atLunch) ? c.diff : 0);
+  animateBalance(bankAll);
+  $(".hero").style.setProperty("--glow", bankAll < 0 ? "rgba(255,96,121,.35)" : bankAll > 0 ? "rgba(53,214,159,.32)" : "rgba(255,155,23,.3)");
+  const pills = [];
+  pills.push(bankAll < 0 ? `<span class="pill neg"><span class="dot"></span>Devendo ${dur(bankAll)}</span>` : bankAll > 0 ? `<span class="pill pos"><span class="dot"></span>Crédito de ${dur(bankAll)}</span>` : `<span class="pill"><span class="dot"></span>Zerado</span>`);
+  const wk = weekDays(), wsum = wk.reduce((s, x) => { const cc = calc(x, S.days[x]); return s + (cc.complete ? cc.diff : 0); }, 0);
+  pills.push(`<span class="pill">Semana ${sdur(wsum)}</span>`);
+  if (+st.initial) pills.push(`<span class="pill">Saldo inicial ${sdur(st.initial)}</span>`);
+  $("#hero-pills").innerHTML = pills.join("");
+  $("#hero-today").textContent = r ? (r.k === "off" ? `folga ${sdur(c.diff)}` : r.k === "holiday" ? "feriado" : `${dur(c.worked)} · ${sdur(c.diff)}${c.complete ? "" : ` → saldo ${sdur(live)}`}`) : "sem ponto";
+
+  // sábado
+  $("#sat-choice").hidden = kind !== "sat" || (r && r.k === "work" && (r.p || []).some(Boolean));
+  $("#sat-work").setAttribute("aria-pressed", String(!(r && r.k === "off")));
+  $("#sat-off").setAttribute("aria-pressed", String(!!(r && r.k === "off")));
+
+  // botão
+  const labels = LABELS[kind], n = labels.length, p = (r && r.k === "work" && r.p) || [];
+  const idx = r && r.k !== "work" ? -1 : [...Array(n).keys()].find(i => !p[i]);
+  const btn = $("#punch"); btn.classList.remove("done", "idle-pulse");
+  if (r && r.k === "off") { $("#punch-k").textContent = "Hoje"; $("#punch-v").textContent = "Folga"; btn.classList.add("done"); }
+  else if (r && r.k === "holiday") { $("#punch-k").textContent = "Hoje"; $("#punch-v").textContent = "Feriado"; btn.classList.add("done"); }
+  else if (idx == null) { $("#punch-k").textContent = "Dia"; $("#punch-v").textContent = "Fechado"; btn.classList.add("done"); }
+  else { $("#punch-k").textContent = "Bater"; $("#punch-v").textContent = labels[idx]; if (idx === 0) btn.classList.add("idle-pulse"); }
+  $("#punch-clock").textContent = hhmm(nowMin());
+  const ratio = c.expected ? Math.min(1, c.worked / c.expected) : (c.worked ? 1 : 0);
+  const prg = $("#prg"); prg.style.strokeDashoffset = String(578 * (1 - ratio)); prg.classList.toggle("over", c.worked >= c.expected && c.expected > 0);
+
+  // live
+  const f = forecast(), liveBits = [];
+  liveBits.push(`<div><b>${dur(c.worked)}</b>trabalhado</div>`);
+  if (c.expected) liveBits.push(`<div><b>${c.worked >= c.expected ? sdur(c.worked - c.expected) : dur(c.expected - c.worked)}</b>${c.worked >= c.expected ? "extra hoje" : "falta hoje"}</div>`);
+  if (c.atLunch && f && f.backAt != null) liveBits.push(`<div><b>${hhmm(f.backAt)}</b>volta liberada</div>`);
+  $("#live").innerHTML = liveBits.join("");
+
+  // slots
+  $("#slots").innerHTML = labels.map((l, i) => {
+    const t = p[i], isNext = i === idx;
+    let hint = "";
+    if (!t && kind === "wd") hint = i === 0 ? `a partir de ${st.earliest}` : i === 1 ? `a partir de ${st.lunchOutMin}` : i === 2 ? (p[1] ? `após ${hhmm(toMin(p[1]) + st.lunchMin)}` : "mín. 1h de almoço") : `a partir de ${st.exitMin}`;
+    if (!t && kind === "sat") hint = i === 0 ? `início ${st.satStart}` : `a partir de ${st.satExitMin}`;
+    return `<button class="slot${isNext ? " next" : ""}" data-edit="${k}"><div class="l">${l}</div><span class="t${t ? "" : " empty"}${stampIdx === i ? " stamp" : ""}">${t || "--:--"}</span><div class="hint">${hint || "&nbsp;"}</div></button>`;
+  }).join("");
+  stampIdx = null;
+
+  // previsão
+  let fh = "";
+  if (f && !c.complete) {
+    const minT = f.min;
+    const okDay = minT != null ? Math.max(f.exitDay, minT) : f.exitDay;
+    fh += `<div class="fbox"><div class="l">Sair para fechar o dia</div><div class="v">${hhmm(okDay)}</div><div class="s">${okDay > f.exitDay ? `regra: não antes de ${hhmm(minT)}` : "dia sem crédito nem débito"}</div></div>`;
+    const okBank = minT != null ? Math.max(f.exitBank, minT) : f.exitBank;
+    fh += `<div class="fbox"><div class="l">Sair para zerar o banco</div><div class="v">${hhmm(Math.min(okBank, 23 * 60 + 59))}</div><div class="s">${okBank > f.exitBank ? `restam ${sdur(f.exitBank - okBank)} p/ outros dias` : f.exitBank - f.exitDay > 180 ? "melhor dividir em vários dias" : `saldo atual ${sdur(bankClosed)}`}</div></div>`;
+    if (kind === "wd") {
+      const early = toMin(st.exitMin);
+      fh += `<div class="fbox"><div class="l">Se sair ${st.exitMin}</div><div class="v ${cls(early - okDay)}" style="color:var(--${cls(early - f.exitDay) || "ink"})">${sdur(early - f.exitDay)}</div><div class="s">no banco hoje</div></div>`;
+      fh += `<div class="fbox"><div class="l">Se sair ${st.normal[3]}</div><div class="v" style="color:var(--${cls(toMin(st.normal[3]) - f.exitDay) || "ink"})">${sdur(toMin(st.normal[3]) - f.exitDay)}</div><div class="s">no banco hoje</div></div>`;
+    }
+  }
+  $("#fore").innerHTML = fh;
+  $("#fore").hidden = !fh;
+  $("#warns").innerHTML = c.warns.map(w => `<div class="warn-row">${esc(w)}</div>`).join("") + (c.complete && !c.warns.length && r && r.k === "work" ? `<div class="warn-row ok-row">Dia fechado dentro das regras: ${sdur(c.diff)}</div>` : "");
+
+  renderReminders(); renderWeek(wk); renderPlan(bankAll); renderHist(); renderRules();
+}
+function renderReminders() {
+  const now = nowMin(), list = reminders();
+  if (!list.length) { $("#rem").innerHTML = `<div class="empty-state">Sem avisos hoje.</div>`; return; }
+  $("#rem").innerHTML = list.map(x => {
+    const done = !!x.s, past = !done && x.at < now - 3, soon = !done && x.at - now <= 30 && x.at >= now - 3;
+    const st = done ? `batido ${x.s}` : past ? "passou" : soon ? `em ${Math.max(0, x.at - now)} min` : "agendado";
+    return `<div class="rem-row${done || past ? " past" : ""}${soon ? " soon" : ""}"><span class="tm">${hhmm(x.at)}</span><span>${esc(x.t)}</span><span class="st">${st}</span></div>`;
+  }).join("");
+}
+function weekDays() {
+  const d = new Date(); const w = d.getDay(); const mon = new Date(d); mon.setDate(d.getDate() - ((w + 6) % 7));
+  return [...Array(6).keys()].map(i => { const x = new Date(mon); x.setDate(mon.getDate() + i); return keyOf(x); });
+}
+function renderWeek(wk) {
+  const t = todayKey(); let sum = 0, worked = 0, exp = 0;
+  const a = parseKey(wk[0]), b = parseKey(wk[5]);
+  $("#week-range").textContent = `${a.getDate()} ${MON[a.getMonth()]} – ${b.getDate()} ${MON[b.getMonth()]}`;
+  $("#week").innerHTML = wk.map((k, i) => {
+    const r = S.days[k], c = calc(k, r), dd = parseKey(k);
+    if (c.complete) sum += c.diff; worked += c.worked; exp += c.expected;
+    const h = c.expected ? Math.min(1.15, c.worked / c.expected) : 0;
+    const kls = r && r.k === "work" && !c.complete && k === t ? "run" : c.complete ? cls(c.diff) : "";
+    let lab;
+    if (r && r.k === "off") lab = `<span class="d neg">folga</span>`;
+    else if (r && r.k === "holiday") lab = `<span class="d na">feriado</span>`;
+    else if (c.complete) lab = `<span class="d ${cls(c.diff)}">${sdur(c.diff)}</span>`;
+    else if (k === t && r) lab = `<span class="d">${dur(c.worked)}</span>`;
+    else if (k < t) lab = `<span class="d na">${r ? "incompl." : "falta"}</span>`;
+    else lab = `<span class="d na">—</span>`;
+    return `<button class="wd${k === t ? " today" : ""}" data-edit="${k}" aria-label="${DOWL[dd.getDay()]} ${dd.getDate()}"><span class="n">${DOW[dd.getDay()]} ${dd.getDate()}</span><div class="bar"><span class="goal" style="bottom:${100 / 1.15}%"></span><i class="${kls}" style="height:${(h / 1.15) * 100}%;animation-delay:${i * 60}ms"></i></div>${lab}</button>`;
+  }).join("");
+  setTimeout(() => $("#week").classList.add("static"), 1200);
+  $("#weeksum").innerHTML = `<span class="muted">Trabalhado <b class="mono" style="color:var(--ink)">${dur(worked)}</b> de ${dur(exp)}</span><span class="mono" style="font-weight:700;color:var(--${cls(sum) || "ink"})">${sdur(sum)}</span>`;
+}
+function renderPlan(bank) {
+  const st = S.settings, n = st.normal.map(toMin);
+  const early = n[0] - toMin(st.earliest), lunchGain = (n[2] - n[1]) - st.lunchMin, both = early + lunchGain;
+  const lateLoss = n[3] - toMin(st.exitMin), satHalf = toMin(st.satEnd) - toMin(st.satExitMin);
+  const opts = [];
+  if (bank < 0) {
+    const debt = -bank;
+    $("#plan-title").textContent = `Faltam ${dur(debt)} para zerar`;
+    opts.push(["pos", "+" + early, `Entrar às ${st.earliest}`, `+${early} min por dia · ${Math.ceil(debt / early)} dia(s)`]);
+    opts.push(["pos", "+" + lunchGain, `Almoço de ${dur(st.lunchMin)} (em vez de ${dur(n[2] - n[1])})`, `+${lunchGain} min por dia · ${Math.ceil(debt / lunchGain)} dia(s)`]);
+    opts.push(["pos", "+" + both, "Os dois juntos", `+${dur(both)} por dia · ${Math.ceil(debt / both)} dia(s)`]);
+    opts.push(["", "Sáb", `Trabalhar o sábado inteiro (${st.satStart}–${st.satEnd})`, "não aumenta a dívida; folgar custaria " + dur(st.satMin)]);
+  } else if (bank > 0) {
+    $("#plan-title").textContent = `Você tem ${dur(bank)} para gastar`;
+    if (bank >= st.satMin) opts.push(["neg", "Sáb", "Folgar um sábado", `usa ${dur(st.satMin)} · sobra ${sdur(bank - st.satMin)}`]);
+    if (bank >= satHalf) opts.push(["neg", st.satExitMin.slice(0, 2) + "h", `Sábado saindo às ${st.satExitMin}`, `usa ${dur(satHalf)} · sobra ${sdur(bank - satHalf)}`]);
+    opts.push(["neg", "−" + lateLoss, `Sair às ${st.exitMin}`, `usa ${lateLoss} min por dia · dá para ${Math.floor(bank / lateLoss)} dia(s)`]);
+    if (bank < satHalf) opts.push(["", "+", "Para folgar um sábado", `faltam ${dur(st.satMin - bank)} · ${Math.ceil((st.satMin - bank) / both)} dia(s) entrando ${st.earliest} com almoço de 1h`]);
+  } else {
+    $("#plan-title").textContent = "Saldo zerado";
+    opts.push(["pos", "+" + both, `Entrar ${st.earliest} e almoçar ${dur(st.lunchMin)}`, `+${dur(both)} por dia · ${Math.ceil(st.satMin / both)} dia(s) para folgar um sábado`]);
+  }
+  $("#plan").innerHTML = opts.map(([k, ic, t, s]) => `<div class="opt"><span class="ic ${k}">${ic}</span><div class="tx">${esc(t)}<small>${esc(s)}</small></div></div>`).join("");
+}
+function renderHist() {
+  const keys = Object.keys(S.days).sort().reverse().slice(0, 40);
+  if (!keys.length) { $("#hist").innerHTML = `<div class="empty-state">Nenhum dia registrado ainda. Bata a entrada acima ou toque em “+ Lançar dia” para lançar dias passados.</div>`; return; }
+  $("#hist").innerHTML = keys.map(k => {
+    const r = S.days[k], c = calc(k, r), d = parseKey(k);
+    const times = r.k === "off" ? "Folga" : r.k === "holiday" ? "Feriado" : (r.p || []).filter(Boolean).join(" · ") || "—";
+    const chip = c.complete ? `<span class="chip ${cls(c.diff)}">${sdur(c.diff)}</span>` : `<span class="chip">${k === todayKey() ? "em curso" : "incompleto"}</span>`;
+    return `<button class="hrow" data-edit="${k}"><span class="dd"><b>${d.getDate()}</b><span>${DOW[d.getDay()]} ${MON[d.getMonth()]}</span></span><span class="tt">${esc(times)}${r.adj ? ` · ajuste ${sdur(r.adj)}` : ""}${r.note ? `<em style="color:var(--muted)">${esc(r.note)}</em>` : ""}${c.warns.length ? `<em>${esc(c.warns[0])}</em>` : ""}</span>${chip}</button>`;
+  }).join("");
+}
+function renderRules() {
+  const st = S.settings;
+  $("#rules").innerHTML = [
+    ["Horário normal", `${st.normal[0]}–${st.normal[1]} · ${st.normal[2]}–${st.normal[3]}`],
+    ["Entrada mais cedo", `${st.earliest} (antes disso não conta)`],
+    ["Saída p/ almoço", `a partir de ${st.lunchOutMin}`],
+    ["Almoço mínimo", `${dur(st.lunchMin)} (menos que isso é descontado)`],
+    ["Saída mais cedo", `${st.exitMin}`],
+    ["Sábado", `começa ${st.satStart}, saída a partir de ${st.satExitMin}`],
+    ["Meta do dia", `seg–sex ${dur(st.weekdayMin)} · sáb ${dur(st.satMin)}`],
+    ["Folga no sábado", `−${dur(st.satMin)} no banco`]
+  ].map(([a, b]) => `<span class="muted">${a}</span><span class="mono">${b}</span>`).join("");
+}
+
+/* ---------- folha (editor e ajustes) ---------- */
+function openSheet(html, mount) {
+  $("#sheet-body").innerHTML = html; $("#scrim").classList.add("on"); $("#sheet").classList.add("on");
+  mount && mount(); setTimeout(() => { const f = $("#sheet-body input,#sheet-body button"); f && f.focus({ preventScroll: true }); }, 50);
+}
+function closeSheet() { $("#scrim").classList.remove("on"); $("#sheet").classList.remove("on"); }
+$("#scrim").addEventListener("click", closeSheet);
+document.addEventListener("keydown", e => { if (e.key === "Escape") closeSheet(); });
+document.addEventListener("click", e => { const b = e.target.closest("[data-edit]"); if (b) openEditor(b.dataset.edit); });
+$("#add-day").addEventListener("click", () => { const d = new Date(); d.setDate(d.getDate() - 1); openEditor(keyOf(d), true); });
+
+function openEditor(k, isNew) {
+  const orig = S.days[k];
+  let draft = orig ? JSON.parse(JSON.stringify(orig)) : { k: "work", p: [], adj: 0 };
+  const paint = () => {
+    const kind = kindOf(k), d = parseKey(k), labels = LABELS[kind];
+    openSheet(`
+      <h3>${DOWL[d.getDay()]}, ${d.getDate()} de ${MON[d.getMonth()]}</h3>
+      <div class="fields">
+        <div class="field full"><label for="ed-date">Data</label><input type="date" id="ed-date" value="${k}"></div>
+      </div>
+      <div class="sec">Tipo do dia</div>
+      <div class="seg" id="ed-kind">
+        <button class="fx" data-k="work" aria-pressed="${draft.k === "work"}">Trabalho</button>
+        <button class="fx" data-k="off" aria-pressed="${draft.k === "off"}">Folga</button>
+        <button class="fx" data-k="holiday" aria-pressed="${draft.k === "holiday"}">Feriado</button>
+      </div>
+      <div class="fields" id="ed-times" style="margin-top:12px" ${draft.k === "work" ? "" : "hidden"}>
+        ${labels.map((l, i) => `<div class="field"><label for="ed-t${i}">${l}</label><input type="time" id="ed-t${i}" value="${(draft.p || [])[i] || ""}"></div>`).join("")}
+      </div>
+      <div class="fields" style="margin-top:12px">
+        <div class="field full"><label for="ed-adj">Ajuste manual (minutos, + ou −)</label><input type="number" id="ed-adj" inputmode="numeric" step="5" value="${draft.adj || 0}"><small>Abono, atestado ou correção do RH.</small></div>
+        <div class="field full"><div class="btnrow" style="margin-top:0" id="ed-chips">
+          <button class="btn fx" data-adj="210" data-nl="1" data-note="Atestado parcial (manhã)">Atestado manhã +3h30</button>
+          <button class="btn fx" data-adj="270" data-nl="1" data-note="Atestado parcial (tarde)">Atestado tarde +4h30</button>
+          <button class="btn fx" data-adj="480" data-nl="1" data-note="Atestado dia inteiro">Dia inteiro +8h</button>
+        </div></div>
+        <label class="field full" style="flex-direction:row;align-items:center;gap:10px;font-size:14px"><input type="checkbox" id="ed-nl" style="width:22px;height:22px" ${draft.noLunch ? "checked" : ""}> Meio período, sem almoço (não desconta 1h)</label>
+        <div class="field full"><label for="ed-note">Observação</label><input id="ed-note" type="text" style="font-family:var(--f-body)" value="${esc(draft.note || "")}" placeholder="Ex.: atestado, abono, esqueci de bater"></div>
+      </div>
+      <div class="preview" id="ed-prev"></div>
+      <div class="btnrow">
+        <button class="btn accent fx grow" id="ed-save">Salvar</button>
+        ${orig ? `<button class="btn danger fx" id="ed-del">Apagar dia</button>` : ""}
+        <button class="btn fx" id="ed-cancel">Fechar</button>
+      </div>`, () => {
+      const prev = () => {
+        const c = calc(k, draft);
+        $("#ed-prev").innerHTML = (draft.k === "work" && !c.complete && !draft.adj ? "Preencha os horários para calcular." : `Trabalhado <b class="mono">${dur(c.worked)}</b> · meta ${dur(c.expected)} · <b class="mono" style="color:var(--${cls(c.diff) || "ink"})">${sdur(c.diff)}</b>`) + (c.warns.length ? `<div style="margin-top:6px;color:var(--neg)">${c.warns.map(esc).join("<br>")}</div>` : "");
+      };
+      const read = () => { draft.p = labels.map((_, i) => ($("#ed-t" + i) || {}).value || null); draft.adj = Math.round(+$("#ed-adj").value || 0); draft.noLunch = $("#ed-nl").checked; draft.note = $("#ed-note").value.trim(); prev(); };
+      $("#ed-chips").addEventListener("click", e => { const b = e.target.closest("button"); if (!b) return; $("#ed-adj").value = b.dataset.adj; $("#ed-nl").checked = true; if (!$("#ed-note").value) $("#ed-note").value = b.dataset.note; read(); });
+      $("#sheet-body").addEventListener("input", e => { if (e.target.id !== "ed-date") read(); });
+      $("#ed-date").addEventListener("change", e => { if (e.target.value) { read(); k = e.target.value; if (!orig && S.days[k]) draft = JSON.parse(JSON.stringify(S.days[k])); paint(); } });
+      $("#ed-kind").addEventListener("click", e => { const b = e.target.closest("button"); if (!b) return; read(); draft.k = b.dataset.k; paint(); });
+      $("#ed-cancel").addEventListener("click", closeSheet);
+      $("#ed-del") && $("#ed-del").addEventListener("click", e => {
+        if (e.target.dataset.sure) { delete S.days[k]; save(); closeSheet(); toast("Dia apagado"); render(); }
+        else { e.target.dataset.sure = 1; e.target.textContent = "Toque de novo para apagar"; }
+      });
+      $("#ed-save").addEventListener("click", () => {
+        read();
+        const clean = { k: draft.k, p: draft.k === "work" ? draft.p.slice(0, labels.length) : [], adj: draft.adj || 0 };
+        if (draft.noLunch) clean.noLunch = true; if (draft.note) clean.note = draft.note;
+        while (clean.p.length && !clean.p[clean.p.length - 1]) clean.p.pop();
+        if (orig && k !== origKey) delete S.days[origKey];
+        S.days[k] = clean; save(); closeSheet(); burst($("#balance"), ["var(--accent)", "var(--pos)"]); toast("Dia salvo"); render();
+      });
+      prev();
+    });
+  };
+  const origKey = k;
+  paint();
+}
+
+$("#open-settings").addEventListener("click", () => {
+  const st = S.settings, ini = +st.initial || 0;
+  const tf = (id, l, v, full) => `<div class="field${full ? " full" : ""}"><label for="${id}">${l}</label><input type="time" id="${id}" value="${v}"></div>`;
+  openSheet(`
+    <h3>Ajustes</h3>
+    <div class="sec">Saldo que você já tem</div>
+    <div class="fields">
+      <div class="field"><label for="s-sign">Sinal</label><select id="s-sign"><option value="1" ${ini >= 0 ? "selected" : ""}>Positivo (+)</option><option value="-1" ${ini < 0 ? "selected" : ""}>Negativo (−)</option></select></div>
+      <div class="field"><label for="s-h">Horas : minutos</label><div style="display:flex;gap:6px"><input id="s-h" type="number" min="0" inputmode="numeric" value="${Math.floor(Math.abs(ini) / 60)}"><input id="s-m" type="number" min="0" max="59" inputmode="numeric" value="${Math.abs(ini) % 60}"></div></div>
+      <div class="field full"><small>Use o saldo que aparece no seu espelho de ponto hoje. Os dias lançados aqui somam a partir dele.</small></div>
+    </div>
+    <div class="sec">Meu horário planejado (lembretes)</div>
+    <div class="fields">
+      ${tf("s-p0", "Entrada", st.plan[0])}${tf("s-p1", "Saída almoço", st.plan[1])}${tf("s-p2", "Volta almoço", st.plan[2])}${tf("s-p3", "Saída", st.plan[3])}
+      <div class="field"><label for="s-sat">Sábado</label><select id="s-sat"><option value="work" ${st.planSat === "work" ? "selected" : ""}>Trabalho</option><option value="off" ${st.planSat === "off" ? "selected" : ""}>Folga</option></select></div>
+      ${tf("s-satx", "Saída no sábado", st.planSatExit)}
+      <div class="field full"><label for="s-rem">Avisar quantos minutos antes</label><input id="s-rem" type="number" min="0" max="60" value="${st.remind}"></div>
+    </div>
+    <div class="sec">Regras da empresa</div>
+    <div class="fields">
+      ${tf("s-n0", "Entrada normal", st.normal[0])}${tf("s-n1", "Almoço normal", st.normal[1])}${tf("s-n2", "Volta normal", st.normal[2])}${tf("s-n3", "Saída normal", st.normal[3])}
+      ${tf("s-ear", "Entrada mais cedo", st.earliest)}${tf("s-lo", "Almoço a partir de", st.lunchOutMin)}
+      <div class="field"><label for="s-lm">Almoço mínimo (min)</label><input id="s-lm" type="number" min="0" value="${st.lunchMin}"></div>
+      ${tf("s-ex", "Saída mais cedo", st.exitMin)}
+      ${tf("s-ss", "Sábado começa", st.satStart)}${tf("s-sx", "Sábado sai a partir", st.satExitMin)}
+      ${tf("s-se", "Sábado termina", st.satEnd)}
+      <div class="field"><label for="s-sm">Meta sábado (min)</label><input id="s-sm" type="number" min="0" value="${st.satMin}"></div>
+    </div>
+    <div class="btnrow"><button class="btn accent fx grow" id="s-save">Salvar ajustes</button><button class="btn fx" id="s-reset">Regras padrão</button><button class="btn fx" id="s-close">Fechar</button></div>
+  `, () => {
+    const v = id => $("#" + id).value;
+    $("#s-close").addEventListener("click", closeSheet);
+    $("#s-reset").addEventListener("click", () => { S.settings = { ...DEFAULTS, initial: S.settings.initial }; save(); closeSheet(); toast("Regras padrão restauradas"); render(); });
+    $("#s-save").addEventListener("click", () => {
+      const s = S.settings;
+      s.initial = (+v("s-sign")) * ((+v("s-h") || 0) * 60 + (+v("s-m") || 0));
+      s.plan = ["s-p0", "s-p1", "s-p2", "s-p3"].map((id, i) => v(id) || DEFAULTS.plan[i]);
+      s.planSat = v("s-sat"); s.planSatExit = v("s-satx") || DEFAULTS.planSatExit; s.remind = Math.max(0, +v("s-rem") || 0);
+      s.normal = ["s-n0", "s-n1", "s-n2", "s-n3"].map((id, i) => v(id) || DEFAULTS.normal[i]);
+      s.weekdayMin = (toMin(s.normal[1]) - toMin(s.normal[0])) + (toMin(s.normal[3]) - toMin(s.normal[2]));
+      s.earliest = v("s-ear") || DEFAULTS.earliest; s.lunchOutMin = v("s-lo") || DEFAULTS.lunchOutMin; s.lunchMin = Math.max(0, +v("s-lm") || 0);
+      s.exitMin = v("s-ex") || DEFAULTS.exitMin; s.satStart = v("s-ss") || DEFAULTS.satStart; s.satExitMin = v("s-sx") || DEFAULTS.satExitMin;
+      s.satEnd = v("s-se") || DEFAULTS.satEnd; s.satMin = Math.max(0, +v("s-sm") || 0);
+      save(); closeSheet(); toast("Ajustes salvos"); render();
+    });
+  });
+});
+
+/* ---------- loop ---------- */
+let lastDay = todayKey();
+setInterval(() => {
+  if (todayKey() !== lastDay) { lastDay = todayKey(); }
+  if (!$("#sheet").classList.contains("on")) render();
+  checkAlerts();
+}, 20000);
+document.addEventListener("visibilitychange", () => { if (!document.hidden) { render(); checkAlerts(); } });
+
+lsLoad(); render(); foot(); initStore();
+})();
+</script>
+
+</body></html>
