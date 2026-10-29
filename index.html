@@ -200,6 +200,19 @@ input,select{font:inherit;color:inherit}
 
 /* calendário */
 .mnav{display:flex;align-items:center;gap:6px}
+.sync{display:inline-flex;align-items:center;gap:7px;height:38px;padding:0 14px;border-radius:999px;font-size:13.5px;font-weight:600;box-shadow:inset 0 0 0 1px var(--line);margin-bottom:2px}
+.sync svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.sync.busy svg{animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.area{width:100%;min-height:120px;border-radius:12px;border:1px solid var(--line);background:var(--surface-2);color:var(--ink);font-family:var(--m);font-size:13px;padding:12px;resize:vertical}
+.area:focus{outline:none;border-color:var(--ink)}
+.steps{display:flex;flex-direction:column;gap:8px;margin:4px 0 16px;padding:0;font-size:14px}
+.steps li{margin-left:18px;color:var(--muted)}
+.steps li b{color:var(--ink);font-weight:600}
+.diff{margin-top:12px;border-top:1px solid var(--line)}
+.diff div{display:grid;grid-template-columns:64px 1fr auto;gap:10px;padding:9px 0;border-bottom:1px solid var(--line);font-size:13px;align-items:center}
+.diff .o{color:var(--faint);text-decoration:line-through;font-family:var(--m);font-size:12px}
+.diff .n{font-family:var(--m)}
 .ib{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;background:var(--surface-2)}
 .ib svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
@@ -235,7 +248,7 @@ input,select{font:inherit;color:inherit}
 .empty{padding:18px 4px;color:var(--muted);font-size:14px;text-align:center}
 
 /* botões */
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:46px;padding:0 16px;border-radius:14px;font-weight:600;font-size:14.5px;background:var(--surface-2);transition:transform .12s,opacity .2s;text-align:center}
+.btn{text-decoration:none;color:inherit;display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:46px;padding:0 16px;border-radius:14px;font-weight:600;font-size:14.5px;background:var(--surface-2);transition:transform .12s,opacity .2s;text-align:center}
 .btn:active{transform:scale(.97)}
 .btn.pri{background:var(--ink);color:var(--bg)}
 .btn.ink{background:var(--ink);color:var(--bg)}
@@ -295,6 +308,7 @@ select.inp{background-image:none;text-align-last:center;font-family:var(--f);fon
 <div class="wrap">
   <header class="top">
     <div><div class="d" id="today-label">—</div><h1 id="title">Banco de horas</h1></div>
+    <button class="sync" id="sec-open" aria-label="Atualizar com o Secullum"><svg viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.34-5.66"/><path d="M20 4v5h-5"/></svg>Secullum</button>
   </header>
 
   <!-- HOJE -->
@@ -367,7 +381,8 @@ select.inp{background-image:none;text-align-last:center;font-family:var(--f);fon
     <div class="card">
       <p class="muted" style="font-size:13.5px">Os dados ficam salvos neste navegador. Para levar para outro celular ou computador, envie o link e abra lá.</p>
       <div class="btns">
-        <button class="btn pri full" id="sync-share">Enviar link com meus dados</button>
+        <button class="btn pri full" id="sec-open2">Atualizar com o Secullum</button>
+        <button class="btn full" id="sync-share">Enviar link com meus dados</button>
         <button class="btn" id="bk-export">Baixar backup</button>
         <button class="btn" id="bk-import">Restaurar backup</button>
       </div>
@@ -699,6 +714,112 @@ $("#bk-file").addEventListener("change", async e => {
   const f = e.target.files[0]; e.target.value = ""; if (!f) return;
   try { offerImport(JSON.parse(await f.text())); } catch (err) { toast("Arquivo de backup inválido"); }
 });
+/* ---------- Secullum (cartão ponto) ---------- */
+const SEC_URL = "https://centraldofuncionario.com.br";
+function parseCard(text) {
+  const out = {}, now = new Date();
+  for (const raw of text.split(/\r?\n/)) {
+    const line = raw.replace(/\s+/g, " ");
+    const dm = line.match(/\b(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?\b/);
+    if (!dm) continue;
+    const d = +dm[1], m = +dm[2];
+    if (d < 1 || d > 31 || m < 1 || m > 12) continue;
+    let y = dm[3] ? +dm[3] : now.getFullYear();
+    if (y < 100) y += 2000;
+    if (!dm[3] && m > now.getMonth() + 2) y--;
+    const k = `${y}-${pad(m)}-${pad(d)}`;
+    if (k > todayKey()) continue;
+    const rest = line.slice(dm.index + dm[0].length), low = rest.toLowerCase();
+    // batidas vêm em ordem; a primeira hora "menor" que a anterior já é coluna de total
+    const times = [];
+    for (const t of rest.matchAll(/\b([01]?\d|2[0-3])[:h]([0-5]\d)\b/g)) {
+      const v = (+t[1]) * 60 + (+t[2]);
+      if (times.length && v <= times[times.length - 1]) break;
+      times.push(v);
+      if (times.length === 4) break;
+    }
+    const kind = kindOf(k);
+    let r;
+    if (times.length) {
+      const p = times.map(hhmm);
+      if (kind === "wd" && p.length === 2) r = { k: "work", p: [p[0], null, null, p[1]], noLunch: true };
+      else r = { k: "work", p: kind === "wd" ? p : p.slice(0, 2) };
+    } else if (/feriado/.test(low)) r = { k: "holiday", p: [] };
+    else if (/folga|compens|dsr/.test(low)) r = { k: "off", p: [] };
+    else continue;
+    r.src = "secullum";
+    if (/atestado|abono|declara/.test(low)) r.flag = true;
+    out[k] = r;
+  }
+  return out;
+}
+async function pdfText(file) {
+  if (!window.pdfjsLib) {
+    await new Promise((ok, no) => { const sc = document.createElement("script"); sc.src = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"; sc.onload = ok; sc.onerror = no; document.head.appendChild(sc); });
+    pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+  }
+  const pdf = await pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise;
+  let text = "";
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const items = (await (await pdf.getPage(i)).getTextContent()).items, rows = new Map();
+    for (const it of items) { const y = Math.round(it.transform[5] / 3); if (!rows.has(y)) rows.set(y, []); rows.get(y).push(it); }
+    for (const y of [...rows.keys()].sort((a, b) => b - a)) text += rows.get(y).sort((a, b) => a.transform[4] - b.transform[4]).map(it => it.str).join(" ") + "\n";
+  }
+  return text;
+}
+const fmtP = r => !r ? "—" : r.k === "off" ? "folga" : r.k === "holiday" ? "feriado" : (r.p || []).filter(Boolean).join(" ");
+function openSecullum() {
+  openSheet(`<h3>Atualizar com o Secullum</h3>
+    <p class="sub">Os dias do cartão ponto substituem o que foi lançado à mão.</p>
+    <ol class="steps">
+      <li>Abra a <b>Central do Funcionário</b> e baixe o <b>cartão ponto</b> do mês (PDF).</li>
+      <li>Escolha o arquivo aqui, ou copie e cole o texto do cartão ponto.</li>
+    </ol>
+    <div class="btns">
+      <a class="btn" href="${SEC_URL}" target="_blank" rel="noopener">Abrir Secullum</a>
+      <button class="btn pri" id="sec-file-btn">Escolher PDF</button>
+    </div>
+    <input type="file" id="sec-file" accept=".pdf,.txt,.csv,application/pdf,text/plain" hidden>
+    <div class="seg" id="sec-scope" style="margin-top:14px">
+      <button data-s="day">Hoje</button><button data-s="week">Esta semana</button><button data-s="all">Mês todo</button>
+    </div>
+    <textarea class="area" id="sec-text" placeholder="ou cole aqui. Ex.: 29/10/2026 qui 07:47 11:51 13:05 17:59" style="margin-top:12px"></textarea>
+    <div id="sec-prev"></div>`, () => {
+    let found = {}, scope = S.settings.secScope || "week";
+    const paintScope = () => $$("#sec-scope button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.s === scope)));
+    paintScope();
+    $("#sec-scope").addEventListener("click", e => { const b = e.target.closest("button"); if (!b) return; scope = b.dataset.s; S.settings.secScope = scope; save(); paintScope(); show(); });
+    const inScope = k => scope === "all" ? true : scope === "day" ? k === todayKey() : k >= weekDays()[0] && k <= todayKey();
+    const show = () => {
+      const keys = Object.keys(found).filter(inScope).sort();
+      if (!keys.length && Object.keys(found).length) { $("#sec-prev").innerHTML = `<p class="sub" style="margin-top:12px">${Object.keys(found).length} dias lidos, mas nenhum ${scope === "day" ? "de hoje" : "desta semana"}.</p>`; return; }
+      if (!keys.length) { $("#sec-prev").innerHTML = $("#sec-text").value.trim() ? `<p class="sub" style="margin-top:12px">Não achei nenhum dia com horários nesse texto.</p>` : ""; return; }
+      const changed = keys.filter(k => fmtP(S.days[k]) !== fmtP(found[k]) || S.days[k].adj || S.days[k].noLunch !== found[k].noLunch);
+      const tmp = S; S = { settings: tmp.settings, days: { ...tmp.days } }; for (const k of keys) S.days[k] = merged(k); const after = closedBank(false); S = tmp;
+      $("#sec-prev").innerHTML = `<p class="sub" style="margin:14px 0 0">${keys.length} dias lidos · <b style="color:var(--ink)">${changed.length} mudam</b> · saldo fica <b style="color:var(--ink)" class="mono">${sdur(after)}</b></p>
+        <div class="diff">${changed.slice(0, 40).map(k => { const d = parseKey(k); return `<div><span class="mono">${pad(d.getDate())}/${pad(d.getMonth() + 1)}</span><span><span class="n">${fmtP(found[k])}</span><br><span class="o">${fmtP(S.days[k])}${S.days[k] && S.days[k].adj ? ` · ajuste ${sdur(S.days[k].adj)}` : ""}</span></span><span></span></div>`; }).join("")}</div>
+        <div class="btns one"><button class="btn pri" id="sec-apply">${changed.length ? `Substituir ${changed.length} dia${changed.length > 1 ? "s" : ""}` : "Tudo igual, fechar"}</button></div>`;
+      $("#sec-apply").addEventListener("click", () => {
+        for (const k of keys) S.days[k] = merged(k);
+        S.settings.secAt = new Date().toISOString(); save(); closeSheet();
+        toast(changed.length ? `${changed.length} dias atualizados pelo Secullum` : "Já estava tudo igual ao Secullum"); render();
+      });
+    };
+    // o dia do Secullum manda; só mantém o ajuste manual se o cartão citar atestado/abono naquele dia
+    const merged = k => { const n = { ...found[k] }, o = S.days[k]; if (n.flag && o && o.adj) { n.adj = o.adj; if (o.note) n.note = o.note; if (o.noLunch) n.noLunch = true; } delete n.flag; return n; };
+    $("#sec-file-btn").addEventListener("click", () => $("#sec-file").click());
+    $("#sec-file").addEventListener("change", async e => {
+      const f = e.target.files[0]; e.target.value = ""; if (!f) return;
+      $("#sec-prev").innerHTML = `<p class="sub" style="margin-top:12px">Lendo ${esc(f.name)}…</p>`;
+      try { const t = /\.pdf$/i.test(f.name) || f.type === "application/pdf" ? await pdfText(f) : await f.text(); found = parseCard(t); show(); }
+      catch (err) { $("#sec-prev").innerHTML = `<p class="sub" style="margin-top:12px">Não consegui ler esse arquivo. Tente copiar e colar o texto.</p>`; }
+    });
+    $("#sec-text").addEventListener("input", e => { found = parseCard(e.target.value); show(); });
+  });
+}
+$("#sec-open").addEventListener("click", openSecullum);
+$("#sec-open2").addEventListener("click", openSecullum);
+
 function offerImport(v) {
   if (!v || typeof v.days !== "object") { toast("Esses dados não são do app de ponto"); return; }
   const keys = Object.keys(v.days).sort();
